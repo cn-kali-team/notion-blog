@@ -1,0 +1,9 @@
+name = "blog"
+main = "src/index.js"
+compatibility_date = "2023-01-25"
+route = "blog.kali-team.cn/*"
+usage_model = "bundled"
+env = { }
+
+[triggers]
+crons = [ ]
