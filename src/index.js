@@ -82,7 +82,7 @@
     }
     let url = new URL(request.url);
     console.log(url.toString());
-    url.hostname = 'www.notion.so';
+    url.hostname = 'kali-team.notion.site';
     if (url.pathname === '/robots.txt') {
       return new Response('Sitemap: https://' + MY_DOMAIN + '/sitemap.xml');
     }
@@ -98,7 +98,7 @@
     if ((url.pathname.startsWith('/app')||url.pathname.startsWith('/mermaid')) && url.pathname.endsWith('js')) {
       response = await fetch(url.toString());
       let body = await response.text();
-      response = new Response(body.replace(/www.notion.so/g, MY_DOMAIN).replace(/notion.so/g, MY_DOMAIN).replace(/exp.blog.kali-team.cn/g, "exp.notion.so"), response);
+      response = new Response(body.replace(/kali-team.notion.site/g, MY_DOMAIN).replace(/kali-team.notion.site/g, MY_DOMAIN).replace(/exp.blog.kali-team.cn/g, "exp.notion.so"), response);
       response.headers.set('Content-Type', 'application/x-javascript');
       return response;
     } else if ((url.pathname.startsWith('/api'))) {
@@ -224,7 +224,7 @@
             pseudo_selection.style.height = "8vh";
           }
         }
-        let notion_page_controls=document.querySelector("html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div.notion-cursor-listener div div.notion-frame div.notion-scroller.vertical div div div div div.pseudoSelection div.notion-page-controls");
+        let notion_page_controls = document.querySelector("html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div.notion-cursor-listener div div.notion-frame div.notion-scroller.vertical div div div div div.pseudoSelection div.notion-page-controls");
         if (notion_page_controls !== null){
           notion_page_controls.remove()
         }
@@ -306,7 +306,7 @@
       };
       const open = window.XMLHttpRequest.prototype.open;
       window.XMLHttpRequest.prototype.open = function() {
-        arguments[1] = arguments[1].replace('${MY_DOMAIN}', 'www.notion.so');
+        arguments[1] = arguments[1].replace('${MY_DOMAIN}', 'kali-team.notion.site');
         return open.apply(this, [].slice.call(arguments));
       };
       remove_notion_page_content();
