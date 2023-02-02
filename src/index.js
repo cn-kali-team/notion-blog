@@ -40,13 +40,15 @@ addEventListener("fetch", (event) => {
   event.respondWith(fetchAndApply(event.request));
 });
 function makeLoc(path, time) {
-  return "<url>\n\t<loc>https://" +
+  return (
+    "<url>\n\t<loc>https://" +
     MY_DOMAIN +
     "/" +
     path +
     "</loc>\n\t<lastmod>" +
     time +
-    "</lastmod>\n\t<changefreq>weekly</changefreq>\n\t<priority>0.6</priority>\n</url>\n";
+    "</lastmod>\n\t<changefreq>weekly</changefreq>\n\t<priority>0.6</priority>\n</url>\n"
+  );
 }
 async function generateSitemap() {
   let sitemap =
@@ -265,6 +267,7 @@ class HeadRewriter {
       div.notion-topbar-mobile > div:nth-child(4) { display: none !important; }
       div.notion-topbar > div > div:nth-child(1n).toggle-mode { display: block !important; }
       div.notion-topbar-mobile > div:nth-child(1n).toggle-mode { display: block !important; }
+      .notion-table_of_contents-block{z-index: 1000 !important;position: fixed;width: auto !important;max-width: auto !important;"border: 1px solid red;top: 50px;left: 50px;}
       </style>`,
       {
         html: true,
