@@ -1,7 +1,7 @@
 /* CONFIGURATION STARTS HERE */
 
 /* Step 1: enter your domain name like fruitionsite.com */
-const MY_DOMAIN = "blog.kali-team.cn";
+// const MY_DOMAIN = "blog.kali-team.cn";
 
 /*
  * Step 2: enter your URL slug to page ID mapping
@@ -9,13 +9,13 @@ const MY_DOMAIN = "blog.kali-team.cn";
  * The value on the right is the Notion page ID
  */
 const SLUG_TO_PAGE = {
-  "": "edb6a939baab4424a25fd295b3c51312",
-  links: "9c74faba0b14441a93c2f94a40da3f79",
+  "": INDEX_PAGE_ID,
+  links: LINK_PAGE_ID,
 };
 
 /* Step 3: enter your page title and description for SEO purposes */
-const PAGE_TITLE = "Kali-Team";
-const PAGE_DESCRIPTION = "三米前有蕉皮";
+// const PAGE_TITLE = "Kali-Team";
+// const PAGE_DESCRIPTION = "三米前有蕉皮";
 
 /* Step 4: enter a Google Font name, you can choose from https://fonts.google.com */
 const GOOGLE_FONT = "";
@@ -57,7 +57,7 @@ async function generateSitemap() {
     (slug) => (sitemap += makeLoc(slug, new Date().toJSON().slice(0, 10)))
   );
   response = await fetch(
-    "https://kali-team.notion.site/api/v3/queryCollection?src=reset",
+    "https://"+NOTION_DOMAIN+"/api/v3/queryCollection?src=reset",
     {
       headers: {
         "User-Agent":
@@ -75,7 +75,7 @@ async function generateSitemap() {
         Pragma: "no-cache",
         "Cache-Control": "no-cache",
       },
-      body: '{"source":{"type":"collection","id":"52de4e5e-ba6e-46a2-9dc5-5581637cf339","spaceId":"d4aa424b-d5f8-4dc3-a0fb-e5270f17203e"},"collectionView":{"id":"a5b688dd-2876-4f80-a47d-d84e713ac56e","spaceId":"d4aa424b-d5f8-4dc3-a0fb-e5270f17203e"},"loader":{"type":"reducer","reducers":{"collection_group_results":{"type":"results","limit":50},"table:uncategorized:title:unique":{"type":"aggregation","aggregation":{"property":"title","aggregator":"unique"}},"table:uncategorized:|oXv:latest_date":{"type":"aggregation","aggregation":{"property":"|oXv","aggregator":"latest_date"}},"table:uncategorized:L:TS:[object Object]":{"type":"aggregation","aggregation":{"property":"L:TS","aggregator":{"operator":"percent_per_group","groupName":"Complete"}}}},"sort":[{"property":"|oXv","direction":"descending"}],"searchQuery":"","userTimeZone":"Asia/Shanghai"}}',
+      body: SITEMAP_BODY,
       method: "POST",
     }
   );
@@ -146,7 +146,7 @@ async function fetchAndApply(request) {
   }
   let url = new URL(request.url);
   console.log(url.toString());
-  url.hostname = "kali-team.notion.site";
+  url.hostname = NOTION_DOMAIN;
   if (url.pathname === "/robots.txt") {
     return new Response("Sitemap: https://" + MY_DOMAIN + "/sitemap.xml");
   }
@@ -167,9 +167,9 @@ async function fetchAndApply(request) {
     let body = await response.text();
     response = new Response(
       body
-        .replace(/kali-team.notion.site/g, MY_DOMAIN)
-        .replace(/kali-team.notion.site/g, MY_DOMAIN)
-        .replace(/exp.blog.kali-team.cn/g, "exp.notion.so"),
+        .replace(/'${NOTION_DOMAIN}'/g, MY_DOMAIN)
+        .replace(/'${NOTION_DOMAIN}'/g, MY_DOMAIN)
+        .replace(/exp.'${MY_DOMAIN}'/g, "exp.notion.so"),
       response
     );
     response.headers.set("Content-Type", "application/x-javascript");
@@ -282,7 +282,6 @@ class BodyRewriter {
   element(element) {
     element.append(
       `<div>Powered by <a href="https://blog.kali-team.cn">Kali-Team</a></div>
-      <script src="https://zz.bdstatic.com/linksubmit/push.js"></script>
       <script>
       window.CONFIG.domainBaseUrl = 'https://${MY_DOMAIN}';
       const SLUG_TO_PAGE = ${JSON.stringify(this.SLUG_TO_PAGE)};
@@ -427,7 +426,7 @@ class BodyRewriter {
       };
       const open = window.XMLHttpRequest.prototype.open;
       window.XMLHttpRequest.prototype.open = function() {
-        arguments[1] = arguments[1].replace('${MY_DOMAIN}', 'kali-team.notion.site');
+        arguments[1] = arguments[1].replace('${MY_DOMAIN}', '${NOTION_DOMAIN}');
         return open.apply(this, [].slice.call(arguments));
       };
       remove_notion_page_content();
