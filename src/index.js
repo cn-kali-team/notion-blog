@@ -267,7 +267,6 @@ class HeadRewriter {
       div.notion-topbar-mobile > div:nth-child(4) { display: none !important; }
       div.notion-topbar > div > div:nth-child(1n).toggle-mode { display: block !important; }
       div.notion-topbar-mobile > div:nth-child(1n).toggle-mode { display: block !important; }
-      .notion-table_of_contents-block{z-index: 1000 !important;position: fixed;width: auto !important;max-width: auto !important;"border: 1px solid red;top: 50px;left: 50px;}
       </style>`,
       {
         html: true,
@@ -291,6 +290,18 @@ class BodyRewriter {
       const slugs = [];
       const pages = [];
       const el = document.createElement('div');
+      const waitFor = (...selectors) => new Promise(resolve => {
+        const delay = 500;
+        const f = () => {
+            const elements = selectors.map(selector => document.querySelector(selector));
+            if (elements.every(element => element != null)) {
+                resolve(elements);
+            } else {
+                setTimeout(f, delay);
+            }
+        }
+        f();
+      });
       let redirected = false;
       Object.keys(SLUG_TO_PAGE).forEach(slug => {
         const page = SLUG_TO_PAGE[slug];
@@ -356,8 +367,25 @@ class BodyRewriter {
         nav.appendChild(el);
         onLight();
       }
+      // Notion 浮动 TOC
+      function TOC() {
+        waitFor('.notion-table_of_contents-block').then(([el]) => {
+          const toc = document.querySelector('.notion-table_of_contents-block');
+          if (toc) {
+              const toc_p = toc.parentElement;
+              if (!toc_p.classList.contains('notion-column-block')) {
+                  return;
+              }
+              toc_p.style.position = 'sticky';
+              toc_p.style.top = '0';
+              toc_p.style.overflowY = 'scroll';
+              toc_p.style.maxHeight = '50vh';
+          }
+      });
+      }
       const observer = new MutationObserver(function() {
         remove_notion_page_content();
+        TOC();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
