@@ -50,6 +50,93 @@ function makeLoc(path, time) {
     "</lastmod>\n\t<changefreq>weekly</changefreq>\n\t<priority>0.6</priority>\n</url>\n"
   );
 }
+function makeEntry(path, title, time) {
+  return (
+    "<entry>\n\t<title>" +
+    title +
+    '</title>\n\t<link href="https://' +
+    MY_DOMAIN +
+    "/" +
+    path +
+    '" rel="alternate"></link>\n\t' +
+    "<published>" +
+    time +
+    "</published>\n\t" +
+    "<id>" +
+    "https://" +
+    MY_DOMAIN +
+    "/" +
+    path +
+    "</id>\n\t" +
+    '<summary type="html">' +
+    title +
+    "</summary>\n</entry>\n"
+  );
+}
+async function generateAtom() {
+  let atom_xml = '<?xml version="1.0" encoding="utf-8"?>\n';
+  atom_xml += '<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-hans">\n';
+  atom_xml += "<title>三米前有蕉皮</title>\n";
+  atom_xml +=
+    '<link rel="alternate" href="https://blog.kali-team.cn/"></link>\n';
+  atom_xml +=
+    '<link rel="self" href="https://blog.kali-team.cn/index.xml"></link>\n';
+  atom_xml += "<id>https://blog.kali-team.cn/</id>\n";
+  atom_xml += "<updated>" + new Date().toISOString() + "</updated>\n";
+  response = await fetch(
+    "https://" + NOTION_DOMAIN + "/api/v3/queryCollection?src=reset",
+    {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0",
+        Accept: "application/x-ndjson",
+        "Accept-Language":
+          "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+        "notion-client-version": "23.11.0.40",
+        "notion-audit-log-platform": "web",
+        "x-notion-active-user-header": "",
+        "Content-Type": "application/json",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        Pragma: "no-cache",
+        "Cache-Control": "no-cache",
+      },
+      body: SITEMAP_BODY,
+      method: "POST",
+    }
+  );
+  let body = await response.json();
+  let blocks = body.recordMap.block;
+  for (const [k, block] of Object.entries(blocks)) {
+    let properties = block.value.properties;
+    let page_id = k.replaceAll("-", "");
+    if (properties !== undefined && properties.title.length === 1) {
+      let page_title = properties.title[0][0];
+      let original_page_title = page_title;
+      page_title = page_title.replace(/^[^-\w.]{1,}/gmu, ""); //删除前面的
+      page_title = page_title.replace(/[^-\w.]{1,}$/gmu, ""); //删除后面的
+      page_title = page_title.replace(/[^-\w.]{1,}/gmu, "-"); //替换中间的
+      page_title = page_title.replace("--", ""); //替换双重横杠
+      if (page_title.length > 0) {
+        atom_xml += makeEntry(
+          page_title + "-" + page_id,
+          original_page_title,
+          new Date(block.value.last_edited_time).toISOString()
+        );
+      } else {
+        atom_xml += makeEntry(
+          page_id,
+          original_page_title,
+          new Date(block.value.last_edited_time).toISOString()
+        );
+      }
+    }
+  }
+  atom_xml += "</feed>";
+  return atom_xml;
+}
+
 async function generateSitemap() {
   let sitemap =
     '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
@@ -57,7 +144,7 @@ async function generateSitemap() {
     (slug) => (sitemap += makeLoc(slug, new Date().toJSON().slice(0, 10)))
   );
   response = await fetch(
-    "https://"+NOTION_DOMAIN+"/api/v3/queryCollection?src=reset",
+    "https://" + NOTION_DOMAIN + "/api/v3/queryCollection?src=reset",
     {
       headers: {
         "User-Agent":
@@ -158,6 +245,11 @@ async function fetchAndApply(request) {
     response.headers.set("content-type", "application/xml");
     return response;
   }
+  if (url.pathname === "/index.xml") {
+    let response = new Response(await generateAtom());
+    response.headers.set("content-type", "application/xml");
+    return response;
+  }
   let response;
   if (
     (url.pathname.startsWith("/app") || url.pathname.startsWith("/mermaid")) &&
@@ -245,7 +337,9 @@ class HeadRewriter {
   element(element) {
     if (GOOGLE_FONT !== "") {
       element.append(
-        `<link href="https://fonts.googleapis.com/css?family=${GOOGLE_FONT.replace(
+        `<link rel=alternate type=application/rss+xml href=https://blog.kali-team.cn/index.xml title=三米前有蕉皮的博客>
+        <link rel=alternate type=application/rss+xml href=https://blog.kali-team.cn/index.xml title=三米前有蕉皮的博客>
+        <link href="https://fonts.googleapis.com/css?family=${GOOGLE_FONT.replace(
           " ",
           "+"
         )}:Regular,Bold,Italic&display=swap" rel="stylesheet">
