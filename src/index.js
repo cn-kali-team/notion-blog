@@ -337,9 +337,7 @@ class HeadRewriter {
   element(element) {
     if (GOOGLE_FONT !== "") {
       element.append(
-        `<link rel=alternate type=application/rss+xml href=https://blog.kali-team.cn/index.xml title=三米前有蕉皮的博客>
-        <link rel=alternate type=application/rss+xml href=https://blog.kali-team.cn/index.xml title=三米前有蕉皮的博客>
-        <link href="https://fonts.googleapis.com/css?family=${GOOGLE_FONT.replace(
+        `<link href="https://fonts.googleapis.com/css?family=${GOOGLE_FONT.replace(
           " ",
           "+"
         )}:Regular,Bold,Italic&display=swap" rel="stylesheet">
@@ -351,7 +349,9 @@ class HeadRewriter {
     }
     // 隐藏工具栏
     element.append(
-      `<style>
+      `<link rel=alternate type=application/rss+xml href=https://blog.kali-team.cn/index.xml title=三米前有蕉皮的博客>
+      <link rel=alternate type=application/rss+xml href=https://blog.kali-team.cn/index.xml title=三米前有蕉皮的博客>
+      <style>
       div.notion-topbar > div > div:nth-child(3) { display: none !important; }
       // div.notion-topbar > div > div:nth-child(4) { display: none !important; }
       div.notion-topbar > div > div:nth-child(5) { display: none !important; }
