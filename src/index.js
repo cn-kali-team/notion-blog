@@ -288,7 +288,10 @@ async function fetchAndApply(request) {
     response = new Response(response.body, response);
     response.headers.delete("Content-Security-Policy");
     response.headers.delete("X-Content-Security-Policy");
+    response.headers.delete("Referrer-Policy");
+    response.headers.delete("X-Permitted-Cross-Domain-Policies");
     response.headers.set("Access-Control-Allow-Origin", "*");
+    response.headers.set("Timing-Allow-Origin", "*");
     return response;
   } else {
     response = await fetch(url.toString(), {
