@@ -69,10 +69,10 @@ async function generateAtom() {
   atom_xml += '<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-hans">\n';
   atom_xml += "<title>" + PAGE_DESCRIPTION + "</title>\n";
   atom_xml +=
-    '<link rel="alternate" href="https://'+MY_DOMAIN+'/"></link>\n';
+    '<link rel="alternate" href="https://' + MY_DOMAIN + '/"></link>\n';
   atom_xml +=
-    '<link rel="self" href="https://'+MY_DOMAIN+'/index.xml"></link>\n';
-  atom_xml += '<id>https://'+MY_DOMAIN+'/</id>\n';
+    '<link rel="self" href="https://' + MY_DOMAIN + '/index.xml"></link>\n';
+  atom_xml += "<id>https://" + MY_DOMAIN + "/</id>\n";
   atom_xml += "<updated>" + new Date().toISOString() + "</updated>\n";
   response = await fetch(
     "https://" + NOTION_DOMAIN + "/api/v3/queryCollection?src=reset",
@@ -279,6 +279,17 @@ async function fetchAndApply(request) {
   } else if (slugs.indexOf(url.pathname.slice(1)) > -1) {
     const pageId = SLUG_TO_PAGE[url.pathname.slice(1)];
     return Response.redirect("https://" + MY_DOMAIN + "/" + pageId, 301);
+  } else if (url.pathname.startsWith("/image/")) {
+    request.headers["Referer"] = "https://blog.kali-team.cn/";
+    response = await fetch(url.toString(), {
+      headers: request.headers,
+      method: request.method,
+    });
+    response = new Response(response.body, response);
+    response.headers.delete("Content-Security-Policy");
+    response.headers.delete("X-Content-Security-Policy");
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    return response;
   } else {
     response = await fetch(url.toString(), {
       body: request.body,
