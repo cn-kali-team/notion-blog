@@ -27,6 +27,7 @@ addEventListener("fetch", (event) => {
   console.log(event);
   event.respondWith(fetchAndApply(event.request));
 });
+// 生成网站地图
 function makeLoc(path, time) {
   return (
     "<url>\n\t<loc>https://" +
@@ -38,6 +39,7 @@ function makeLoc(path, time) {
     "</lastmod>\n\t<changefreq>weekly</changefreq>\n\t<priority>0.6</priority>\n</url>\n"
   );
 }
+// 生成订阅信息
 function makeEntry(path, title, published_time, updated_time) {
   return (
     "<entry>\n\t<title>" +
@@ -64,6 +66,7 @@ function makeEntry(path, title, published_time, updated_time) {
     "</summary>\n</entry>\n"
   );
 }
+
 async function generateAtom() {
   let atom_xml = '<?xml version="1.0" encoding="utf-8"?>\n';
   atom_xml += '<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-hans">\n';
@@ -133,7 +136,6 @@ async function generateAtom() {
   atom_xml += "</feed>";
   return atom_xml;
 }
-
 async function generateSitemap() {
   let sitemap =
     '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
@@ -191,6 +193,15 @@ async function generateSitemap() {
   sitemap += "</urlset>";
   return sitemap;
 }
+const HTTP_BLACK_LIST = {
+  "https://exp.notion.so/": "",
+  "https://http-inputs-notion.splunkcloud.com/": "",
+  "https://msgstore.www.notion.so/": "",
+  "https://o324374.ingest.sentry.io/": "",
+  "/api/v3/trackSegmentEvent": "{}",
+  // "/api/v3/getPublicPageData":"{\"publicAccessRole\":\"none\"}",
+  "/api/v3/getUserAnalyticsSettings":"{\"isIntercomEnabled\":true,\"isZendeskEnabled\":true,\"isAmplitudeEnabled\":true,\"isSegmentEnabled\":true,\"intercomAppId\":\"gpfdrxfd\",\"noIntercomUserId\":false,\"isSprigEnabled\":true,\"isLoaded\":true}"
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -200,7 +211,7 @@ const corsHeaders = {
   "Access-Control-Allow-Credentials": "True",
   "Access-Control-Max-Age": "1728000",
 };
-
+// 当前端浏览器询问option返回可以支持各种请求，可以跨域
 function handleOptions(request) {
   if (
     request.headers.get("Origin") !== null &&
@@ -223,7 +234,7 @@ function handleOptions(request) {
     });
   }
 }
-
+// 路由入口
 async function fetchAndApply(request) {
   console.log(request.toString());
   if (request.method === "OPTIONS") {
@@ -306,7 +317,7 @@ async function fetchAndApply(request) {
 
   return appendJavascript(response, SLUG_TO_PAGE);
 }
-
+// 重写META
 class MetaRewriter {
   element(element) {
     if (PAGE_TITLE !== "") {
@@ -340,7 +351,7 @@ class MetaRewriter {
     }
   }
 }
-
+// 重写请求头
 class HeadRewriter {
   element(element) {
     if (GOOGLE_FONT !== "") {
@@ -377,15 +388,38 @@ class HeadRewriter {
     );
   }
 }
-
+// 重写正文
 class BodyRewriter {
   constructor(SLUG_TO_PAGE) {
     this.SLUG_TO_PAGE = SLUG_TO_PAGE;
+    this.HTTP_BLACK_LIST = HTTP_BLACK_LIST;
   }
   element(element) {
     element.append(
       `<div>Powered by <a href="https://blog.kali-team.cn">Kali-Team</a></div>
       <script>
+      const HTTP_BLACK_LIST = ${JSON.stringify(this.HTTP_BLACK_LIST)};
+      async function HttpRewriter(resource, config){
+        for (const [k,v] of Object.entries(HTTP_BLACK_LIST)) {
+          if (resource.startsWith(k)){
+            var init = { "status" : 200 , "statusText" : "OK" };
+            var defaultResponse = new Response(null, init);
+            if (v !=""){
+              defaultResponse = new Response.json(JSON.stringify(v));
+            }
+            return defaultResponse;
+          }
+        }
+        // console.log(resource,config)
+        const response = await originalFetch(resource, config);
+        return response;      
+      }
+      const { fetch: originalFetch } = window;
+      window.fetch = async (...args) => {
+          let [resource, config ] = args;
+          const response = await HttpRewriter(resource, config);
+          return response;
+      };
       window.CONFIG.domainBaseUrl = 'https://${MY_DOMAIN}';
       const SLUG_TO_PAGE = ${JSON.stringify(this.SLUG_TO_PAGE)};
       const PAGE_TO_SLUG = {};
