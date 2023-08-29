@@ -118,7 +118,7 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
     <div>Powered by <a href="https://blog.kali-team.cn">Kali-Team</a></div>
       <script>
       localStorage.__console = true;
-      window.CONFIG.domainBaseUrl = 'MY_DOMAIN';
+      window.CONFIG.domainBaseUrl = 'https://MY_DOMAIN';
       let redirected = false;
       const el = document.createElement('div');
       const waitFor = (...selectors) => new Promise(resolve => {
