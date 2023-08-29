@@ -116,6 +116,39 @@ async fn append_javascript(mut response: Response, my_domain: String) -> Result<
 
 fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
     let mut output = vec![];
+    let rewriter_http = r#"
+        const HTTP_BLACK_LIST = {
+          "https://exp.notion.so/": "",
+          "https://http-inputs-notion.splunkcloud.com/": "",
+          "https://msgstore.www.notion.so/": "",
+          "https://o324374.ingest.sentry.io/": "",
+          "/api/v3/trackSegmentEvent": "{}",
+          "/api/v3/ping": "{}",
+          // "/api/v3/getPublicPageData":"{\"publicAccessRole\":\"none\"}",
+          "/api/v3/getUserAnalyticsSettings":
+            '{"isIntercomEnabled":true,"isZendeskEnabled":true,"isAmplitudeEnabled":true,"isSegmentEnabled":true,"intercomAppId":"gpfdrxfd","noIntercomUserId":false,"isSprigEnabled":true,"isLoaded":true}',
+        };"
+      async function HttpRewriter(resource, config){
+        for (const [k,v] of Object.entries(HTTP_BLACK_LIST)) {
+          if (resource.startsWith(k)){
+            var init = { "status" : 200 , "statusText" : "OK" };
+            var defaultResponse = new Response(null, init);
+            if (v !=""){
+              defaultResponse = new Response.json(JSON.stringify(v));
+            }
+            return defaultResponse;
+          }
+        }
+        // console.log(resource,config)
+        const response = await originalFetch(resource, config);
+        return response;
+      }
+      const { fetch: originalFetch } = window;
+      window.fetch = async (...args) => {
+          let [resource, config ] = args;
+          const response = await HttpRewriter(resource, config);
+          return response;
+      };"#;
     let h = r#"
     <div>Powered by <a href="https://blog.kali-team.cn">Kali-Team</a></div>
       <script>
@@ -233,6 +266,7 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
         Settings {
             element_content_handlers: vec![
                 element!("body", |el| {
+                    el.append(&rewriter_http,ContentType::Html);
                     el.append(&h, ContentType::Html);
                     Ok(())
                 }),
