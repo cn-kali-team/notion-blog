@@ -1,0 +1,21 @@
+[package]
+name = "notion-blog"
+version = "0.1.0"
+edition = "2021"
+description = "Notion Blog"
+authors = ["Kali-Team <root@kali-team.cn>"]
+
+# https://github.com/rustwasm/wasm-pack/issues/1247
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = "0.0.15"
+lol_html = "1.1.1"
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
