@@ -42,7 +42,9 @@ async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
     }
     let mut full_url = req.url()?;
     full_url.set_host(Some(&notion_domain))?;
-    if req.path().starts_with("/app") && req.path().ends_with("js") {
+    if (req.path().starts_with("/app") || req.path().starts_with("/mermaid"))
+        && req.path().ends_with("js")
+    {
         let request = Request::new_with_init(
             full_url.as_str(),
             RequestInit::new().with_method(req.method()),
