@@ -26,7 +26,6 @@ async fn rewriter_js(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<R
         let body = o.bytes().await.unwrap_or_default();
         let body = String::from_utf8_lossy(&body).to_string();
         let new_body = body
-            .replace(&blog_env.my_domain, &blog_env.notion_domain)
             .replace(&blog_env.my_domain, &blog_env.notion_domain);
         let response = Response::from_bytes(new_body.as_bytes().to_vec())?;
         let mut response_headers = Headers::new();
