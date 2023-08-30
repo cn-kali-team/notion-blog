@@ -165,12 +165,12 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let mut full_url = req.url()?;
     full_url.set_host(Some(&blog_env.notion_domain))?;
     let path = req.path();
-    if (path.starts_with("/app") || path.starts_with("/mermaid")) && path.ends_with("js") {
+    if (path.starts_with("/app") || path.starts_with("/mermaid")) && path.ends_with(".js") {
         rewriter_js(req, full_url, blog_env).await
     } else if path.starts_with("/api") {
-        return rewriter_api(req, full_url).await;
+        rewriter_api(req, full_url).await
     } else {
-        return rewriter_html(req, full_url, blog_env).await;
+        rewriter_html(req, full_url, blog_env).await
     }
 }
 
