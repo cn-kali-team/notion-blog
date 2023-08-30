@@ -134,7 +134,10 @@ impl BlogEnv {
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let blog_env = BlogEnv::new(env);
-    match req.path().as_str() {
+    let mut full_url = req.url()?;
+    full_url.set_host(Some(&blog_env.notion_domain))?;
+    let path = req.path();
+    match path.as_str() {
         "/" => {
             return Response::redirect(
                 format!("https://{}/{}", &blog_env.my_domain, &blog_env.index).parse()?,
@@ -168,9 +171,6 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     if matches!(req.method(), Method::Options) {
         return cors_options().await;
     }
-    let mut full_url = req.url()?;
-    full_url.set_host(Some(&blog_env.notion_domain))?;
-    let path = req.path();
     if path.starts_with("/app") && path.ends_with(".js") {
         rewriter_js(req, full_url, blog_env).await
     } else if path.ends_with(".js") {
