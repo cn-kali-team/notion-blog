@@ -210,7 +210,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           return response;
       };"#;
     let h = r#"
-    <div>Powered by <a href="https://blog.kali-team.cn">Kali-Team</a></div>
+    <div>Powered by <a href="https://github.com/cn-kali-team/notion-blog">Kali-Team</a></div>
       <script>
       localStorage.__console = true;
       window.CONFIG.domainBaseUrl = 'https://MY_DOMAIN';
