@@ -82,7 +82,7 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
     )?;
     let mut response = Fetch::Request(request).send().await?;
     let body = response.bytes().await.unwrap_or_default();
-    let new_response = Response::from_bytes(rewriter(body, blog_env.my_domain))
+    let new_response = Response::from_bytes(rewriter(body, blog_env))
         .unwrap()
         .with_headers(response.headers().clone())
         .with_status(response.status_code());
@@ -95,6 +95,9 @@ struct BlogEnv {
     index: String,
     links: String,
     donate: String,
+    title: String,
+    description: String,
+    icon: String,
 }
 
 impl BlogEnv {
@@ -104,12 +107,18 @@ impl BlogEnv {
         let index = env.var("INDEX_PAGE_ID").unwrap().to_string();
         let links = env.var("LINK_PAGE_ID").unwrap().to_string();
         let donate = env.var("DONATE_PAGE_ID").unwrap().to_string();
+        let title = env.var("PAGE_TITLE").unwrap().to_string();
+        let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
+        let icon = env.var("ICON_URL").unwrap().to_string();
         BlogEnv {
             my_domain,
             notion_domain,
             index,
             links,
             donate,
+            title,
+            description,
+            icon,
         }
     }
 }
@@ -125,6 +134,9 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 format!("https://{}/{}", &blog_env.my_domain, &blog_env.index).parse()?,
             );
         }
+        // "/images/favicon.ico" | "/images/logo-ios.png" => {
+        //     return Response::redirect(blog_env.icon.parse()?);
+        // }
         "/links" => {
             return Response::redirect(
                 format!("https://{}/{}", &blog_env.my_domain, &blog_env.links).parse()?,
@@ -162,7 +174,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     }
 }
 
-fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
+fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     let mut output = vec![];
     let rewriter_http = r#"
         const HTTP_BLACK_LIST = {
@@ -295,7 +307,7 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
         subtree: true,
       });
       remove_notion_page_content();
-    </script>"#.replace("MY_DOMAIN", &my_domain);
+    </script>"#.replace("MY_DOMAIN", &blog_env.my_domain);
     let head = r#"
       <style>
       div.notion-topbar > div > div:nth-child(3) { display: none !important; }
@@ -313,13 +325,52 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
     let mut rewriter = HtmlRewriter::new(
         Settings {
             element_content_handlers: vec![
-                element!("body", |el| {
-                    el.append(rewriter_http, ContentType::Html);
-                    el.append(&h, ContentType::Html);
+                element!("title", |el| {
+                    el.set_inner_content(&blog_env.title, ContentType::Text);
+                    Ok(())
+                }),
+                element!("meta", |el| {
+                    match el.get_attribute("name").unwrap_or_default().as_str() {
+                        "description"
+                        | "twitter:title"
+                        | "twitter:site"
+                        | "twitter:description" => {
+                            el.set_attribute("content", &blog_env.description).unwrap();
+                        }
+                        "twitter:url" => {
+                            el.set_attribute("content", &format!("https://{}", blog_env.my_domain))
+                                .unwrap();
+                        }
+                        "twitter:image" => {
+                            el.set_attribute("content", &blog_env.icon).unwrap();
+                        }
+                        "apple-itunes-app" => {
+                            el.remove();
+                        }
+                        _ => {}
+                    }
+                    match el.get_attribute("property").unwrap_or_default().as_str() {
+                        "og:site_name" | "og:title" | "og:description" => {
+                            el.set_attribute("content", &blog_env.description).unwrap();
+                        }
+                        "og:url" => {
+                            el.set_attribute("content", &format!("https://{}", blog_env.my_domain))
+                                .unwrap();
+                        }
+                        "og:image" => {
+                            el.set_attribute("content", &blog_env.icon).unwrap();
+                        }
+                        _ => {}
+                    }
                     Ok(())
                 }),
                 element!("head", |el| {
                     el.append(head, ContentType::Html);
+                    Ok(())
+                }),
+                element!("body", |el| {
+                    el.append(rewriter_http, ContentType::Html);
+                    el.append(&h, ContentType::Html);
                     Ok(())
                 }),
             ],
@@ -334,11 +385,51 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use crate::rewriter;
+    use lol_html::{element, HtmlRewriter, Settings};
 
     #[test]
     fn it_works() {
-        let h = r#"<body class="notion-body"><a>ss</a></body>"#.to_string();
-        rewriter(h.as_bytes().to_vec(), "blog.kali-team.cn".to_string());
+        let html = r#"<meta name="description" content="A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team">
+        <meta name="twitter:site" content="@NotionHQ">
+        <meta name="twitter:url" content="https://www.notion.so">
+        "#.to_string();
+        let mut output = vec![];
+        let mut rewriter = HtmlRewriter::new(
+            Settings {
+                element_content_handlers: vec![element!("meta", |el| {
+                    match el.get_attribute("name").unwrap_or_default().as_str() {
+                        "description"
+                        | "twitter:title"
+                        | "twitter:site"
+                        | "twitter:description" => {
+                            el.set_attribute("content", "Kali-Team").unwrap();
+                        }
+                        "twitter:url" => {
+                            el.set_attribute("content", "https://blog.kali-team.cn")
+                                .unwrap();
+                        }
+                        _ => {}
+                    }
+                    match el.get_attribute("property").unwrap_or_default().as_str() {
+                        "og:site_name" | "og:title" | "og:description" => {
+                            el.set_attribute("content", "Kali-Team").unwrap();
+                        }
+                        "og:url" => {
+                            el.set_attribute("content", "https://blog.kali-team.cn")
+                                .unwrap();
+                        }
+                        "og:image" => {}
+                        _ => {}
+                    }
+
+                    Ok(())
+                })],
+                ..Settings::default()
+            },
+            |c: &[u8]| output.extend_from_slice(c),
+        );
+        rewriter.write(html.as_bytes()).unwrap();
+        rewriter.end().unwrap();
+        println!("{}", String::from_utf8_lossy(&output));
     }
 }
