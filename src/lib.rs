@@ -274,7 +274,7 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
               toc_p.style.position = 'sticky';
               toc_p.style.top = '0';
               toc_p.style.overflowY = 'scroll';
-              toc_p.style.maxHeight = '50vh';
+              toc_p.style.maxHeight = '100vh';
           }
       });
       }
