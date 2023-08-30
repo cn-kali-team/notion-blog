@@ -3,115 +3,163 @@ use lol_html::{element, HtmlRewriter, Settings};
 use worker::wasm_bindgen::JsValue;
 use worker::*;
 
-#[event(fetch)]
-async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    let my_domain = env.var("MY_DOMAIN")?.to_string();
-    let notion_domain = env.var("NOTION_DOMAIN")?.to_string();
-    let index = env.var("INDEX_PAGE_ID")?.to_string();
-    let links = env.var("LINK_PAGE_ID")?.to_string();
-    let donate = env.var("DONATE_PAGE_ID")?.to_string();
-    // let title = env.var("DONATE_PAGE_ID")?.to_string();
-    // let des = env.var("PAGE_DESCRIPTION")?.to_string();
-    match req.path().as_str() {
-        "/" => {
-            return Response::redirect(format!("https://{}/{}", &my_domain, &index).parse()?);
-        }
-        "/links" => {
-            return Response::redirect(format!("https://{}/{}", &my_domain, &links).parse()?);
-        }
-        "/donate" => {
-            return Response::redirect(format!("https://{}/{}", &my_domain, &donate).parse()?);
-        }
-        _ => {}
-    }
-    if matches!(req.method(), Method::Options) {
-        let response = Response::empty()?;
-        let mut header = Headers::new();
-        header.set("Access-Control-Allow-Origin", "*")?;
-        header.set(
-            "Access-Control-Allow-Methods",
-            "GET,POST,PUT,PATCH,TRACE,DELETE,HEAD,OPTIONS",
-        )?;
-        header.set("Access-Control-Allow-Headers", "Content-Type")?;
-        header.set("Access-Control-Allow-Credentials", "True")?;
-        header.set("Access-Control-Max-Age", "1728000")?;
-        return Ok(response.with_headers(header));
-    }
-    if req.path() == "/api/v3/teV1" {
-        return Response::ok("success");
-    }
-    let mut full_url = req.url()?;
-    full_url.set_host(Some(&notion_domain))?;
-    if (req.path().starts_with("/app") || req.path().starts_with("/mermaid"))
-        && req.path().ends_with("js")
-    {
-        let request = Request::new_with_init(
-            full_url.as_str(),
-            RequestInit::new().with_method(req.method()),
-        )?;
-        if let Ok(mut o) = Fetch::Request(request).send().await {
-            let body = o.bytes().await.unwrap_or_default();
-            let body = String::from_utf8_lossy(&body).to_string();
-            let new_body = body
-                .replace(&my_domain, &notion_domain)
-                .replace(&my_domain, &notion_domain);
-            let response = Response::from_bytes(new_body.as_bytes().to_vec())?;
-            let mut response_headers = Headers::new();
-            response_headers.set("Content-Type", "application/x-javascript")?;
-            return Ok(response.with_headers(response_headers));
-        }
-        Response::redirect(full_url)
-    } else if req.path().starts_with("/api") {
-        let mut headers = req.headers().clone();
-        headers.set("Content-Type", "application/json;charset=UTF-8")?;
-        headers.set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")?;
-        headers.set("Access-Control-Allow-Origin", "*")?;
-        let body = if req.path() != "/api/v3/getPublicPageData" {
-            Some(JsValue::from_str(
-                String::from_utf8_lossy(&req.bytes().await.unwrap_or_default()).as_ref(),
-            ))
-        } else {
-            None
-        };
-        let request = Request::new_with_init(
-            full_url.as_str(),
-            RequestInit::new()
-                .with_headers(headers)
-                .with_body(body)
-                .with_method(Method::Post),
-        )?;
-        if let Ok(response) = Fetch::Request(request).send().await {
-            let mut response_headers = Headers::new();
-            response_headers.delete("Content-Security-Policy")?;
-            response_headers.delete("X-content-Security-Policy")?;
-            response_headers.delete("Content-Security-Policy")?;
-            response_headers.delete("X-Content-Security-Policy")?;
-            response_headers.delete("Referrer-Policy")?;
-            response_headers.delete("X-Permitted-Cross-Domain-Policies")?;
-            response_headers.set("Access-Control-Allow-Origin", "*")?;
-            response_headers.set("Timing-Allow-Origin", "*")?;
-            return Ok(response.with_headers(response_headers));
-        }
-        return Response::redirect(full_url);
+async fn cors_options() -> Result<Response> {
+    let response = Response::empty()?;
+    let mut header = Headers::new();
+    header.set("Access-Control-Allow-Origin", "*")?;
+    header.set(
+        "Access-Control-Allow-Methods",
+        "GET,POST,PUT,PATCH,TRACE,DELETE,HEAD,OPTIONS",
+    )?;
+    header.set("Access-Control-Allow-Headers", "Content-Type")?;
+    header.set("Access-Control-Allow-Credentials", "True")?;
+    header.set("Access-Control-Max-Age", "1728000")?;
+    Ok(response.with_headers(header))
+}
+
+async fn rewriter_js(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
+    let request = Request::new_with_init(
+        full_url.as_str(),
+        RequestInit::new().with_method(req.method()),
+    )?;
+    return if let Ok(mut o) = Fetch::Request(request).send().await {
+        let body = o.bytes().await.unwrap_or_default();
+        let body = String::from_utf8_lossy(&body).to_string();
+        let new_body = body
+            .replace(&blog_env.my_domain, &blog_env.notion_domain)
+            .replace(&blog_env.my_domain, &blog_env.notion_domain);
+        let response = Response::from_bytes(new_body.as_bytes().to_vec())?;
+        let mut response_headers = Headers::new();
+        response_headers.set("Content-Type", "application/x-javascript")?;
+        Ok(response.with_headers(response_headers))
     } else {
-        let headers = req.headers().clone();
-        let request = Request::new_with_init(
-            full_url.as_str(),
-            RequestInit::new()
-                .with_headers(headers)
-                .with_method(req.method()),
-        )?;
-        return append_javascript(Fetch::Request(request).send().await?, my_domain).await;
+        Response::redirect(full_url)
+    };
+}
+
+async fn rewriter_api(mut req: Request, full_url: Url) -> Result<Response> {
+    let mut headers = req.headers().clone();
+    headers.set("Content-Type", "application/json;charset=UTF-8")?;
+    headers.set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")?;
+    headers.set("Access-Control-Allow-Origin", "*")?;
+    let body = if req.path() != "/api/v3/getPublicPageData" {
+        Some(JsValue::from_str(
+            String::from_utf8_lossy(&req.bytes().await.unwrap_or_default()).as_ref(),
+        ))
+    } else {
+        None
+    };
+    let request = Request::new_with_init(
+        full_url.as_str(),
+        RequestInit::new()
+            .with_headers(headers)
+            .with_body(body)
+            .with_method(Method::Post),
+    )?;
+    if let Ok(response) = Fetch::Request(request).send().await {
+        let mut response_headers = Headers::new();
+        response_headers.delete("Content-Security-Policy")?;
+        response_headers.delete("X-content-Security-Policy")?;
+        response_headers.delete("Content-Security-Policy")?;
+        response_headers.delete("X-Content-Security-Policy")?;
+        response_headers.delete("Referrer-Policy")?;
+        response_headers.delete("X-Permitted-Cross-Domain-Policies")?;
+        response_headers.set("Access-Control-Allow-Origin", "*")?;
+        response_headers.set("Timing-Allow-Origin", "*")?;
+        Ok(response.with_headers(response_headers))
+    } else {
+        Response::redirect(full_url)
     }
 }
 
-async fn append_javascript(mut response: Response, my_domain: String) -> Result<Response> {
+async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
+    let headers = req.headers().clone();
+    let request = Request::new_with_init(
+        full_url.as_str(),
+        RequestInit::new()
+            .with_headers(headers)
+            .with_method(req.method()),
+    )?;
+    let mut response = Fetch::Request(request).send().await?;
     let body = response.bytes().await.unwrap_or_default();
-    let new_response = Response::from_bytes(rewriter(body, my_domain))
+    let new_response = Response::from_bytes(rewriter(body, blog_env.my_domain))
         .unwrap()
         .with_headers(response.headers().clone())
         .with_status(response.status_code());
     Ok(new_response)
+}
+
+struct BlogEnv {
+    my_domain: String,
+    notion_domain: String,
+    index: String,
+    links: String,
+    donate: String,
+}
+
+impl BlogEnv {
+    pub fn new(env: Env) -> Self {
+        let my_domain = env.var("MY_DOMAIN").unwrap().to_string();
+        let notion_domain = env.var("NOTION_DOMAIN").unwrap().to_string();
+        let index = env.var("INDEX_PAGE_ID").unwrap().to_string();
+        let links = env.var("LINK_PAGE_ID").unwrap().to_string();
+        let donate = env.var("DONATE_PAGE_ID").unwrap().to_string();
+        BlogEnv {
+            my_domain,
+            notion_domain,
+            index,
+            links,
+            donate,
+        }
+    }
+}
+
+#[event(fetch)]
+async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+    let blog_env = BlogEnv::new(env);
+    // let title = env.var("DONATE_PAGE_ID")?.to_string();
+    // let des = env.var("PAGE_DESCRIPTION")?.to_string();
+    match req.path().as_str() {
+        "/" => {
+            return Response::redirect(
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.index).parse()?,
+            );
+        }
+        "/links" => {
+            return Response::redirect(
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.links).parse()?,
+            );
+        }
+        "/donate" => {
+            return Response::redirect(
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.donate).parse()?,
+            );
+        }
+        "/api/v3/teV1" => {
+            return Response::ok("success");
+        }
+        "/robots.txt" => {
+            return Response::ok(format!(
+                "Sitemap: https://{}/sitemap.xml",
+                blog_env.my_domain
+            ));
+        }
+        "/sitemap.xml" => {}
+        _ => {}
+    }
+    if matches!(req.method(), Method::Options) {
+        return cors_options().await;
+    }
+    let mut full_url = req.url()?;
+    full_url.set_host(Some(&blog_env.notion_domain))?;
+    let path = req.path();
+    if (path.starts_with("/app") || path.starts_with("/mermaid")) && path.ends_with("js") {
+        rewriter_js(req, full_url, blog_env).await
+    } else if path.starts_with("/api") {
+        return rewriter_api(req, full_url).await;
+    } else {
+        return rewriter_html(req, full_url, blog_env).await;
+    }
 }
 
 fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
@@ -266,7 +314,7 @@ fn rewriter(html: Vec<u8>, my_domain: String) -> Vec<u8> {
         Settings {
             element_content_handlers: vec![
                 element!("body", |el| {
-                    el.append(&rewriter_http,ContentType::Html);
+                    el.append(rewriter_http, ContentType::Html);
                     el.append(&h, ContentType::Html);
                     Ok(())
                 }),
