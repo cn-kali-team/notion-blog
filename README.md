@@ -24,6 +24,19 @@ PAGE_DESCRIPTION = "三米前有蕉皮"
 mode = "smart"
 ```
 
+### GitHub Action
+
+- Fork repository to your accounts
+- Edit your own `wrangler.toml` file.
+- [wrangler-action](https://github.com/cloudflare/wrangler-action/)
+- Open [Create Token](https://dash.cloudflare.com/profile/api-tokens) on cloudflare
+- Use template `Edit Cloudflare Workers` -> Edit Option -> Continue to summary
+- Copy Token and remember it
+- Open `https://github.com/xxx/notion-blog/settings/secrets/actions/new` and create a Name `CF_API_TOKEN`
+- Secret:`Your Cloudflare Token`
+
+### Manual
+
 - install cloudflare [wrangler](https://github.com/cloudflare/workers-rs)
 - [Rust WebAssembly guide](https://developers.cloudflare.com/workers/runtime-apis/webassembly/rust/)
 - wrangler login
