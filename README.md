@@ -1,5 +1,8 @@
 ## Deploy
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cn-kali-team/notion-blog)
+
+
 - wrangler.toml
 
 ```toml
