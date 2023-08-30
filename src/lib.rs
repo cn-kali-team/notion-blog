@@ -37,6 +37,14 @@ async fn rewriter_js(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<R
     };
 }
 
+async fn proxy_js(req: Request, full_url: Url) -> Result<Response> {
+    let request = Request::new_with_init(
+        full_url.as_str(),
+        RequestInit::new().with_method(req.method()),
+    )?;
+    Fetch::Request(request).send().await
+}
+
 async fn rewriter_api(mut req: Request, full_url: Url) -> Result<Response> {
     let mut headers = req.headers().clone();
     headers.set("Content-Type", "application/json;charset=UTF-8")?;
@@ -126,8 +134,6 @@ impl BlogEnv {
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let blog_env = BlogEnv::new(env);
-    // let title = env.var("DONATE_PAGE_ID")?.to_string();
-    // let des = env.var("PAGE_DESCRIPTION")?.to_string();
     match req.path().as_str() {
         "/" => {
             return Response::redirect(
@@ -167,6 +173,8 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let path = req.path();
     if (path.starts_with("/app") || path.starts_with("/mermaid")) && path.ends_with(".js") {
         rewriter_js(req, full_url, blog_env).await
+    } else if path.ends_with(".js") {
+        proxy_js(req, full_url).await
     } else if path.starts_with("/api") {
         rewriter_api(req, full_url).await
     } else {
