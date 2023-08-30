@@ -17,4 +17,4 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-        run: cargo install wrangler && wrangler publish
+#        run: cargo install wrangler && wrangler publish
