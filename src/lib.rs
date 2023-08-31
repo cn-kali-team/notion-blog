@@ -246,7 +246,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     <div>Powered by <a href="https://github.com/cn-kali-team/notion-blog">Kali-Team</a></div>
       <script>
       localStorage.__console = true;
-      window.CONFIG.domainBaseUrl = 'https://MY_DOMAIN';
+      window.CONFIG.domainBaseUrl = location.origin;
       let redirected = false;
       const el = document.createElement('div');
       const waitFor = (...selectors) => new Promise(resolve => {
@@ -340,7 +340,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         subtree: true,
       });
       remove_notion_page_content();
-    </script>"#.replace("MY_DOMAIN", &blog_env.my_domain);
+    </script>"#;
     let head = r#"
       <style>
       div.notion-topbar > div > div:nth-child(3) { display: none !important; }
@@ -349,8 +349,10 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       div.notion-topbar > div > div:nth-child(6) { display: none !important; }
       div.notion-topbar > div > div:nth-child(7) { display: none !important; }
       div.notion-topbar > div > div:nth-child(8) { display: none !important; }
+      div.notion-topbar-mobile > div:nth-child(1) { padding: 0px 10px !important; }
       div.notion-topbar-mobile > div:nth-child(3) { display: none !important; }
       div.notion-topbar-mobile > div:nth-child(4) { display: none !important; }
+      div.notion-topbar-mobile > div:nth-child(5) { display: none !important; }
       div.notion-topbar > div > div:nth-child(1n).toggle-mode { display: block !important; }
       div.notion-topbar-mobile > div:nth-child(1n).toggle-mode { display: block !important; }
       </style>
@@ -403,7 +405,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                 }),
                 element!("body", |el| {
                     el.append(rewriter_http, ContentType::Html);
-                    el.append(&h, ContentType::Html);
+                    el.append(h, ContentType::Html);
                     Ok(())
                 }),
             ],
