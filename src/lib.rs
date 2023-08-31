@@ -102,7 +102,7 @@ async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Res
     headers.set("Content-Type", "application/json;charset=UTF-8")?;
     headers.set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")?;
     headers.set("Access-Control-Allow-Origin", "*")?;
-    let body = if req.path() != "/api/v3/getPublicPageData" {
+    let body = if req.path() == "/api/v3/getPublicPageData" {
         let mut public_page_data: PublicPageData =
             serde_json::from_slice(&req.bytes().await.unwrap_or_default()).unwrap();
         public_page_data.requested_on_public_domain = true;
@@ -112,7 +112,9 @@ async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Res
             &serde_json::to_string(&public_page_data).unwrap_or_default(),
         ))
     } else {
-        None
+        Some(JsValue::from_str(
+            String::from_utf8_lossy(&req.bytes().await.unwrap_or_default()).as_ref(),
+        ))
     };
     let request = Request::new_with_init(
         full_url.as_str(),
