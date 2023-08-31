@@ -1,7 +1,61 @@
 use lol_html::html_content::ContentType;
 use lol_html::{element, HtmlRewriter, Settings};
+use serde::{Deserialize, Serialize};
 use worker::wasm_bindgen::JsValue;
 use worker::*;
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase"))]
+struct PublicPageData {
+    r#type: String,
+    name: String,
+    block_id: String,
+    space_domain: String,
+    show_move_to: bool,
+    save_parent: bool,
+    should_duplicate: bool,
+    project_management_launch: bool,
+    requested_on_public_domain: bool,
+    configure_open_in_desktop_app: bool,
+    mobile_data: MobileData,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all(serialize = "camelCase"))]
+struct MobileData {
+    is_push: bool,
+}
+struct BlogEnv {
+    my_domain: String,
+    notion_domain: String,
+    index: String,
+    links: String,
+    donate: String,
+    title: String,
+    description: String,
+    icon: String,
+}
+
+impl BlogEnv {
+    pub fn new(env: Env) -> Self {
+        let my_domain = env.var("MY_DOMAIN").unwrap().to_string();
+        let notion_domain = env.var("NOTION_DOMAIN").unwrap().to_string();
+        let index = env.var("INDEX_PAGE_ID").unwrap().to_string();
+        let links = env.var("LINK_PAGE_ID").unwrap().to_string();
+        let donate = env.var("DONATE_PAGE_ID").unwrap().to_string();
+        let title = env.var("PAGE_TITLE").unwrap().to_string();
+        let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
+        let icon = env.var("ICON_URL").unwrap().to_string();
+        BlogEnv {
+            my_domain,
+            notion_domain,
+            index,
+            links,
+            donate,
+            title,
+            description,
+            icon,
+        }
+    }
+}
 
 async fn cors_options() -> Result<Response> {
     let response = Response::empty()?;
@@ -25,8 +79,7 @@ async fn rewriter_js(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<R
     return if let Ok(mut o) = Fetch::Request(request).send().await {
         let body = o.bytes().await.unwrap_or_default();
         let body = String::from_utf8_lossy(&body).to_string();
-        let new_body = body
-            .replace(&blog_env.my_domain, &blog_env.notion_domain);
+        let new_body = body.replace(&blog_env.my_domain, &blog_env.notion_domain);
         let response = Response::from_bytes(new_body.as_bytes().to_vec())?;
         let mut response_headers = Headers::new();
         response_headers.set("Content-Type", "application/x-javascript")?;
@@ -44,14 +97,19 @@ async fn proxy_js(req: Request, full_url: Url) -> Result<Response> {
     Fetch::Request(request).send().await
 }
 
-async fn rewriter_api(mut req: Request, full_url: Url) -> Result<Response> {
+async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
     let mut headers = req.headers().clone();
     headers.set("Content-Type", "application/json;charset=UTF-8")?;
     headers.set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36")?;
     headers.set("Access-Control-Allow-Origin", "*")?;
     let body = if req.path() != "/api/v3/getPublicPageData" {
+        let mut public_page_data: PublicPageData =
+            serde_json::from_slice(&req.bytes().await.unwrap_or_default()).unwrap();
+        public_page_data.requested_on_public_domain = true;
+        let space_domain = blog_env.notion_domain.replace(".notion.site", "");
+        public_page_data.space_domain = space_domain;
         Some(JsValue::from_str(
-            String::from_utf8_lossy(&req.bytes().await.unwrap_or_default()).as_ref(),
+            &serde_json::to_string(&public_page_data).unwrap_or_default(),
         ))
     } else {
         None
@@ -94,40 +152,6 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
         .with_headers(response.headers().clone())
         .with_status(response.status_code());
     Ok(new_response)
-}
-
-struct BlogEnv {
-    my_domain: String,
-    notion_domain: String,
-    index: String,
-    links: String,
-    donate: String,
-    title: String,
-    description: String,
-    icon: String,
-}
-
-impl BlogEnv {
-    pub fn new(env: Env) -> Self {
-        let my_domain = env.var("MY_DOMAIN").unwrap().to_string();
-        let notion_domain = env.var("NOTION_DOMAIN").unwrap().to_string();
-        let index = env.var("INDEX_PAGE_ID").unwrap().to_string();
-        let links = env.var("LINK_PAGE_ID").unwrap().to_string();
-        let donate = env.var("DONATE_PAGE_ID").unwrap().to_string();
-        let title = env.var("PAGE_TITLE").unwrap().to_string();
-        let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
-        let icon = env.var("ICON_URL").unwrap().to_string();
-        BlogEnv {
-            my_domain,
-            notion_domain,
-            index,
-            links,
-            donate,
-            title,
-            description,
-            icon,
-        }
-    }
 }
 
 #[event(fetch)]
@@ -175,7 +199,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     } else if path.ends_with(".js") {
         proxy_js(req, full_url).await
     } else if path.starts_with("/api") {
-        rewriter_api(req, full_url).await
+        rewriter_api(req, full_url, blog_env).await
     } else {
         rewriter_html(req, full_url, blog_env).await
     }
@@ -257,7 +281,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         }
       }
       remove_notion_page_content();
-            function onDark() {
+      function onDark() {
         el.innerHTML = '<div title="Change to Light Mode" style="margin-top: 8px; padding-left: 8px; padding-right: 8px; margin-left: 8px; margin-right: 8px; min-width: 0px;"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg></div></div>';
         document.body.classList.add('dark');
         __console.environment.ThemeStore.setState({ mode: 'dark' });
