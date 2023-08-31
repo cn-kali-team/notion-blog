@@ -18,7 +18,7 @@ struct PublicPageData {
     configure_open_in_desktop_app: bool,
     mobile_data: MobileData,
 }
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct MobileData {
     is_push: bool,
@@ -28,7 +28,7 @@ struct BlogEnv {
     notion_domain: String,
     index: String,
     links: String,
-    donate: String,
+    sponsor: String,
     title: String,
     description: String,
     icon: String,
@@ -40,7 +40,7 @@ impl BlogEnv {
         let notion_domain = env.var("NOTION_DOMAIN").unwrap().to_string();
         let index = env.var("INDEX_PAGE_ID").unwrap().to_string();
         let links = env.var("LINK_PAGE_ID").unwrap().to_string();
-        let donate = env.var("DONATE_PAGE_ID").unwrap().to_string();
+        let sponsor = env.var("SPONSOR_PAGE_ID").unwrap().to_string();
         let title = env.var("PAGE_TITLE").unwrap().to_string();
         let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
         let icon = env.var("ICON_URL").unwrap().to_string();
@@ -49,7 +49,7 @@ impl BlogEnv {
             notion_domain,
             index,
             links,
-            donate,
+            sponsor,
             title,
             description,
             icon,
@@ -176,9 +176,9 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 format!("https://{}/{}", &blog_env.my_domain, &blog_env.links).parse()?,
             );
         }
-        "/donate" => {
+        "/donate" | "/sponsor" => {
             return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.donate).parse()?,
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.sponsor).parse()?,
             );
         }
         "/api/v3/teV1" => {
@@ -420,14 +420,14 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use lol_html::{element, HtmlRewriter, Settings};
     use crate::PublicPageData;
+    use lol_html::{element, HtmlRewriter, Settings};
 
     #[test]
-    fn test_json(){
+    fn test_json() {
         let j = r#"{"type":"block-space","name":"page","blockId":"edb6a939-baab-4424-a25f-d295b3c51312","showMoveTo":false,"saveParent":false,"shouldDuplicate":false,"projectManagementLaunch":false,"requestedOnPublicDomain":false,"configureOpenInDesktopApp":false,"mobileData":{"isPush":false}}"#;
-        let p:PublicPageData = serde_json::from_str(j).unwrap();
-        println!("{:#?}",p);
+        let p: PublicPageData = serde_json::from_str(j).unwrap();
+        println!("{:#?}", p);
     }
     #[test]
     fn it_works() {
