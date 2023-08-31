@@ -3,13 +3,13 @@ use lol_html::{element, HtmlRewriter, Settings};
 use serde::{Deserialize, Serialize};
 use worker::wasm_bindgen::JsValue;
 use worker::*;
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all(serialize = "camelCase"))]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 struct PublicPageData {
     r#type: String,
     name: String,
     block_id: String,
-    space_domain: String,
+    space_domain: Option<String>,
     show_move_to: bool,
     save_parent: bool,
     should_duplicate: bool,
@@ -18,8 +18,8 @@ struct PublicPageData {
     configure_open_in_desktop_app: bool,
     mobile_data: MobileData,
 }
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all(serialize = "camelCase"))]
+#[derive(Serialize, Deserialize,Debug)]
+#[serde(rename_all = "camelCase")]
 struct MobileData {
     is_push: bool,
 }
@@ -107,7 +107,7 @@ async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Res
             serde_json::from_slice(&req.bytes().await.unwrap_or_default()).unwrap();
         public_page_data.requested_on_public_domain = true;
         let space_domain = blog_env.notion_domain.replace(".notion.site", "");
-        public_page_data.space_domain = space_domain;
+        public_page_data.space_domain = Some(space_domain);
         Some(JsValue::from_str(
             &serde_json::to_string(&public_page_data).unwrap_or_default(),
         ))
@@ -419,7 +419,14 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use lol_html::{element, HtmlRewriter, Settings};
+    use crate::PublicPageData;
 
+    #[test]
+    fn test_json(){
+        let j = r#"{"type":"block-space","name":"page","blockId":"edb6a939-baab-4424-a25f-d295b3c51312","showMoveTo":false,"saveParent":false,"shouldDuplicate":false,"projectManagementLaunch":false,"requestedOnPublicDomain":false,"configureOpenInDesktopApp":false,"mobileData":{"isPush":false}}"#;
+        let p:PublicPageData = serde_json::from_str(j).unwrap();
+        println!("{:#?}",p);
+    }
     #[test]
     fn it_works() {
         let html = r#"<meta name="description" content="A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team">
