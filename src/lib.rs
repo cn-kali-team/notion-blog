@@ -35,6 +35,7 @@ struct BlogEnv {
     title: String,
     description: String,
     icon: String,
+    allow_comment: bool,
 }
 
 impl BlogEnv {
@@ -56,6 +57,7 @@ impl BlogEnv {
             title,
             description,
             icon,
+            allow_comment: false,
         }
     }
 }
@@ -127,16 +129,16 @@ async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Res
             .with_method(Method::Post),
     )?;
     if let Ok(response) = Fetch::Request(request).send().await {
-        let mut response_headers = Headers::new();
-        response_headers.delete("Content-Security-Policy")?;
-        response_headers.delete("X-content-Security-Policy")?;
-        response_headers.delete("Content-Security-Policy")?;
-        response_headers.delete("X-Content-Security-Policy")?;
-        response_headers.delete("Referrer-Policy")?;
-        response_headers.delete("X-Permitted-Cross-Domain-Policies")?;
-        response_headers.set("Access-Control-Allow-Origin", "*")?;
-        response_headers.set("Timing-Allow-Origin", "*")?;
-        Ok(response.with_headers(response_headers))
+        let mut header = Headers::new();
+        // response_headers.delete("Content-Security-Policy")?;
+        // response_headers.delete("X-content-Security-Policy")?;
+        // response_headers.delete("Content-Security-Policy")?;
+        // response_headers.delete("X-Content-Security-Policy")?;
+        // response_headers.delete("Referrer-Policy")?;
+        // response_headers.delete("X-Permitted-Cross-Domain-Policies")?;
+        header.set("Access-Control-Allow-Origin", "*")?;
+        header.set("Timing-Allow-Origin", "*")?;
+        Ok(response.with_headers(header))
     } else {
         Response::redirect(full_url)
     }
@@ -152,16 +154,29 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
     )?;
     let mut response = Fetch::Request(request).send().await?;
     let body = response.bytes().await.unwrap_or_default();
+    let mut response_header = response.headers().clone();
+    if let Ok(Some(mut csp)) = response_header.get("Content-Security-Policy") {
+        csp = csp.replace(
+            "https://gist.github.com",
+            "https://gist.github.com https://giscus.app/client.js",
+        );
+        if csp.contains("style-src") {
+            csp = csp.replace("style-src", "style-src https://giscus.app/default.css");
+        } else {
+            csp.push_str(";style-src https://giscus.app/default.css");
+        }
+        response_header.set("Content-Security-Policy", &csp)?;
+    }
     let new_response = Response::from_bytes(rewriter(body, blog_env))
         .unwrap()
-        .with_headers(response.headers().clone())
+        .with_headers(response_header)
         .with_status(response.status_code());
     Ok(new_response)
 }
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    let blog_env = BlogEnv::new(env);
+    let mut blog_env = BlogEnv::new(env);
     let mut full_url = req.url()?;
     full_url.set_host(Some(&blog_env.notion_domain))?;
     let path = req.path();
@@ -196,6 +211,9 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         "/sitemap.xml" => {}
         _ => {}
     }
+    if !path.ends_with(&blog_env.index) {
+        blog_env.allow_comment = true;
+    }
     if matches!(req.method(), Method::Options) {
         return cors_options().await;
     }
@@ -213,6 +231,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     let mut output = vec![];
     let rewriter_http = r#"
+    <script>
         const HTTP_BLACK_LIST = {
           "https://exp.notion.so/": "",
           "https://http-inputs-notion.splunkcloud.com/": "",
@@ -235,7 +254,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             return defaultResponse;
           }
         }
-        // console.log(resource,config)
+        console.log(resource,config)
         const response = await originalFetch(resource, config);
         return response;
       }
@@ -244,7 +263,8 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           let [resource, config ] = args;
           const response = await HttpRewriter(resource, config);
           return response;
-      };"#;
+      };
+    </script>"#;
     let h = r#"
     <div>Powered by <a href="https://github.com/cn-kali-team/notion-blog">Kali-Team</a></div>
       <script>
@@ -346,12 +366,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     </script>"#;
     let head = r#"
       <style>
-      // div.notion-topbar > div > div:nth-child(3) { display: none !important; }
-      // div.notion-topbar > div > div:nth-child(4) { display: none !important; }
-      // div.notion-topbar > div > div:nth-child(5) { display: none !important; }
-      // div.notion-topbar > div > div:nth-child(6) { display: none !important; }
-      // div.notion-topbar > div > div:nth-child(7) { display: none !important; }
-      // div.notion-topbar > div > div:nth-child(8) { display: none !important; }
       div.notion-topbar > div > div:nth-last-child(-n+4) { display: none !important; }
       div.notion-topbar-mobile > div:nth-child(1) { padding: 0px 10px !important; }
       div.notion-topbar-mobile > div:nth-child(3) { display: none !important; }
@@ -360,6 +374,24 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       div.notion-topbar > div > div:nth-child(1n).toggle-mode { display: block !important; }
       div.notion-topbar-mobile > div:nth-child(1n).toggle-mode { display: block !important; }
       </style>
+    "#;
+    let comment = r#"
+    <script src="https://giscus.app/client.js"
+            data-repo="cn-kali-team/notion-blog"
+            data-repo-id="R_kgDOI1wUgQ"
+            data-category="Announcements"
+            data-category-id="DIC_kwDOI1wUgc4CZK9O"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="top"
+            data-theme="preferred_color_scheme"
+            data-lang="zh-CN"
+            data-loading="lazy"
+            crossorigin="anonymous"
+            async>
+    </script>
     "#;
     let mut rewriter = HtmlRewriter::new(
         Settings {
@@ -410,6 +442,9 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                 element!("body", |el| {
                     el.append(rewriter_http, ContentType::Html);
                     el.append(h, ContentType::Html);
+                    if blog_env.allow_comment {
+                        el.append(comment, ContentType::Html);
+                    }
                     Ok(())
                 }),
             ],
