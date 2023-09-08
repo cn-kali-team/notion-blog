@@ -467,6 +467,7 @@ dependencies = [
  "lol_html",
  "serde",
  "serde_json",
+ "wasm-bindgen",
  "worker",
 ]
 

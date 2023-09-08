@@ -346,9 +346,15 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           }
       });
       }
+      function addComment() {
+         const comment = document.querySelector(".giscus");
+         const notion_page_content = document.querySelector(".notion-page-content");
+         notion_page_content.appendChild(comment);
+      }
       const observer = new MutationObserver(function() {
         remove_notion_page_content();
         TOC();
+        addComment();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
@@ -376,21 +382,22 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       </style>
     "#;
     let comment = r#"
-    <script src="https://giscus.app/client.js"
-            data-repo="cn-kali-team/notion-blog"
-            data-repo-id="R_kgDOI1wUgQ"
-            data-category="Announcements"
-            data-category-id="DIC_kwDOI1wUgc4CZK9O"
-            data-mapping="pathname"
-            data-strict="0"
-            data-reactions-enabled="1"
-            data-emit-metadata="0"
-            data-input-position="top"
-            data-theme="preferred_color_scheme"
-            data-lang="zh-CN"
-            data-loading="lazy"
-            crossorigin="anonymous"
-            async>
+    <script
+        src="https://giscus.app/client.js"
+        data-repo="cn-kali-team/notion-blog"
+        data-repo-id="R_kgDOI1wUgQ"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOI1wUgc4CZK9O"
+        data-mapping="pathname"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="top"
+        data-theme="preferred_color_scheme"
+        data-lang="zh-CN"
+        data-loading="lazy"
+        crossorigin="anonymous"
+        async>
     </script>
     "#;
     let mut rewriter = HtmlRewriter::new(
