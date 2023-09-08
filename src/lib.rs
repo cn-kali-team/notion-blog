@@ -158,7 +158,7 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
     if let Ok(Some(mut csp)) = response_header.get("Content-Security-Policy") {
         csp = csp.replace(
             "https://gist.github.com",
-            "https://gist.github.com https://giscus.app/client.js",
+            "https://gist.github.com https://giscus.app/client.js https://static.cloudflareinsights.com",
         );
         if csp.contains("style-src") {
             csp = csp.replace("style-src", "style-src https://giscus.app/default.css");
@@ -304,11 +304,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         if (notion_page_controls !== null){
           notion_page_controls.remove()
         }
-        let notion_page_content = document.querySelector(".notion-page-content");
-        let comment = document.querySelector(".giscus");
-        if (notion_page_content !== null && comment !== null) {
-            notion_page_content.appendChild(comment);
-        }
       }
       remove_notion_page_content();
       function onDark() {
@@ -368,6 +363,16 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         subtree: true,
       });
       remove_notion_page_content();
+      document.addEventListener("DOMContentLoaded", (event) => {
+      console.log("page is fully loaded");
+      let comment = document.querySelector(".giscus");
+      waitFor('.notion-page-content').then(([el]) => {
+        let notion_page_content = document.querySelector(".notion-page-content");
+        if (notion_page_content !== null && comment !== null) {
+            notion_page_content.appendChild(comment);
+        }
+      });
+    });
     </script>"#;
     let head = r#"
       <style>
