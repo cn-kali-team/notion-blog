@@ -304,6 +304,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         if (notion_page_controls !== null){
           notion_page_controls.remove()
         }
+        addComment();
       }
       remove_notion_page_content();
       function onDark() {
@@ -354,7 +355,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       const observer = new MutationObserver(function() {
         remove_notion_page_content();
         TOC();
-        addComment();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
