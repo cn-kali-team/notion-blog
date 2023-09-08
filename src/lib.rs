@@ -242,7 +242,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           // "/api/v3/getPublicPageData":"{\"publicAccessRole\":\"none\"}",
           "/api/v3/getUserAnalyticsSettings":
             '{"isIntercomEnabled":true,"isZendeskEnabled":true,"isAmplitudeEnabled":true,"isSegmentEnabled":true,"intercomAppId":"gpfdrxfd","noIntercomUserId":false,"isSprigEnabled":true,"isLoaded":true}',
-        };"
+        };
       async function HttpRewriter(resource, config){
         for (const [k,v] of Object.entries(HTTP_BLACK_LIST)) {
           if (resource.startsWith(k)){
@@ -254,7 +254,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             return defaultResponse;
           }
         }
-        console.log(resource,config)
+        // console.log(resource,config)
         const response = await originalFetch(resource, config);
         return response;
       }
@@ -303,6 +303,11 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         let notion_page_controls = document.querySelector("html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div.notion-cursor-listener div div.notion-frame div.notion-scroller.vertical div div div div div.pseudoSelection div.notion-page-controls");
         if (notion_page_controls !== null){
           notion_page_controls.remove()
+        }
+        let notion_page_content = document.querySelector(".notion-page-content");
+        let comment = document.querySelector(".giscus");
+        if (notion_page_content !== null && comment !== null) {
+            notion_page_content.appendChild(comment);
         }
       }
       remove_notion_page_content();
@@ -392,9 +397,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         data-loading="lazy"
         crossorigin="anonymous"
         async>
-        window.onload = (event) => {
-          document.querySelector(".notion-page-content").appendChild(document.querySelector(".giscus"));
-        };
     </script>
     "#;
     let mut rewriter = HtmlRewriter::new(
