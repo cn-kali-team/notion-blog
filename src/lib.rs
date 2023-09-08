@@ -304,7 +304,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         if (notion_page_controls !== null){
           notion_page_controls.remove()
         }
-        addComment();
       }
       remove_notion_page_content();
       function onDark() {
@@ -347,11 +346,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           }
       });
       }
-      function addComment() {
-         const comment = document.querySelector(".giscus");
-         const notion_page_content = document.querySelector(".notion-page-content");
-         notion_page_content.appendChild(comment);
-      }
       const observer = new MutationObserver(function() {
         remove_notion_page_content();
         TOC();
@@ -369,6 +363,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         subtree: true,
       });
       remove_notion_page_content();
+      document.querySelector(".notion-page-content").appendChild(document.querySelector(".giscus"));
     </script>"#;
     let head = r#"
       <style>
