@@ -330,6 +330,15 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         nav.appendChild(el);
         onLight();
       }
+      function addComment() {
+          let comment = document.querySelector(".giscus");
+          waitFor('.notion-page-content').then(([el]) => {
+            let notion_page_content = document.querySelector(".notion-page-content");
+            if (notion_page_content !== null && comment !== null) {
+                notion_page_content.appendChild(comment);
+            }
+          });
+      }
       // Notion 浮动 TOC
       function TOC() {
         waitFor('.notion-table_of_contents-block').then(([el]) => {
@@ -349,6 +358,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       const observer = new MutationObserver(function() {
         remove_notion_page_content();
         TOC();
+        addComment();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
@@ -363,16 +373,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         subtree: true,
       });
       remove_notion_page_content();
-      document.addEventListener("DOMContentLoaded", (event) => {
-      console.log("page is fully loaded");
-      let comment = document.querySelector(".giscus");
-      waitFor('.notion-page-content').then(([el]) => {
-        let notion_page_content = document.querySelector(".notion-page-content");
-        if (notion_page_content !== null && comment !== null) {
-            notion_page_content.appendChild(comment);
-        }
-      });
-    });
     </script>"#;
     let head = r#"
       <style>
