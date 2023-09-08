@@ -363,7 +363,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         subtree: true,
       });
       remove_notion_page_content();
-      document.querySelector(".notion-page-content").appendChild(document.querySelector(".giscus"));
     </script>"#;
     let head = r#"
       <style>
@@ -393,6 +392,9 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         data-loading="lazy"
         crossorigin="anonymous"
         async>
+        window.onload = (event) => {
+          document.querySelector(".notion-page-content").appendChild(document.querySelector(".giscus"));
+        };
     </script>
     "#;
     let mut rewriter = HtmlRewriter::new(
