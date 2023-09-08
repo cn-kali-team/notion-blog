@@ -3,6 +3,7 @@ use lol_html::{element, HtmlRewriter, Settings};
 use serde::{Deserialize, Serialize};
 use worker::wasm_bindgen::JsValue;
 use worker::*;
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct PublicPageData {
@@ -18,11 +19,13 @@ struct PublicPageData {
     configure_open_in_desktop_app: bool,
     mobile_data: MobileData,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct MobileData {
     is_push: bool,
 }
+
 struct BlogEnv {
     my_domain: String,
     notion_domain: String,
@@ -343,12 +346,13 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     </script>"#;
     let head = r#"
       <style>
-      div.notion-topbar > div > div:nth-child(3) { display: none !important; }
+      // div.notion-topbar > div > div:nth-child(3) { display: none !important; }
       // div.notion-topbar > div > div:nth-child(4) { display: none !important; }
-      div.notion-topbar > div > div:nth-child(5) { display: none !important; }
-      div.notion-topbar > div > div:nth-child(6) { display: none !important; }
-      div.notion-topbar > div > div:nth-child(7) { display: none !important; }
-      div.notion-topbar > div > div:nth-child(8) { display: none !important; }
+      // div.notion-topbar > div > div:nth-child(5) { display: none !important; }
+      // div.notion-topbar > div > div:nth-child(6) { display: none !important; }
+      // div.notion-topbar > div > div:nth-child(7) { display: none !important; }
+      // div.notion-topbar > div > div:nth-child(8) { display: none !important; }
+      div.notion-topbar > div > div:nth-last-child(-n+4) { display: none !important; }
       div.notion-topbar-mobile > div:nth-child(1) { padding: 0px 10px !important; }
       div.notion-topbar-mobile > div:nth-child(3) { display: none !important; }
       div.notion-topbar-mobile > div:nth-child(4) { display: none !important; }
@@ -429,6 +433,7 @@ mod tests {
         let p: PublicPageData = serde_json::from_str(j).unwrap();
         println!("{:#?}", p);
     }
+
     #[test]
     fn it_works() {
         let html = r#"<meta name="description" content="A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team">
