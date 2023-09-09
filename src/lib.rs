@@ -35,7 +35,6 @@ struct BlogEnv {
     title: String,
     description: String,
     icon: String,
-    allow_comment: bool,
 }
 
 impl BlogEnv {
@@ -57,7 +56,6 @@ impl BlogEnv {
             title,
             description,
             icon,
-            allow_comment: false,
         }
     }
 }
@@ -211,9 +209,6 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         "/sitemap.xml" => {}
         _ => {}
     }
-    if !path.ends_with(&blog_env.index) {
-        blog_env.allow_comment = true;
-    }
     if matches!(req.method(), Method::Options) {
         return cors_options().await;
     }
@@ -254,7 +249,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             return defaultResponse;
           }
         }
-        // console.log(resource,config)
         const response = await originalFetch(resource, config);
         return response;
       }
@@ -284,6 +278,23 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         }
         f();
       });
+      function waitForElementToExist(selector) {
+        return new Promise(resolve => {
+          if (document.querySelector(selector)) {
+            return resolve(document.querySelector(selector));
+          }
+          const observer = new MutationObserver(() => {
+            if (document.querySelector(selector)) {
+              resolve(document.querySelector(selector));
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.body, {
+            subtree: true,
+            childList: true,
+          });
+        });
+      };
       function remove_notion_page_content(){
         let scroll_bar = document.getElementsByClassName("notion-page-content");
         if (scroll_bar.length > 0){
@@ -331,12 +342,15 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         onLight();
       }
       function addComment() {
-          let comment = document.querySelector(".giscus");
-          waitFor('.notion-page-content').then(([el]) => {
-            let notion_page_content = document.querySelector(".notion-page-content");
-            if (notion_page_content !== null && comment !== null) {
-                notion_page_content.appendChild(comment);
-            }
+          waitForElementToExist('.notion-page-content').then((content)=>{
+          let toc = document.querySelector('.notion-table_of_contents-block');
+          let my_giscus = document.getElementById('MyGiscus');
+          if (my_giscus==null&&toc!==null){
+              const giscus = document.querySelector('.giscus');
+              const newNode = document.importNode(giscus, true);
+              newNode.id = "MyGiscus"
+              content.appendChild(newNode);
+          }
           });
       }
       // Notion 浮动 TOC
@@ -355,10 +369,9 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           }
       });
       }
-      const observer = new MutationObserver(function() {
+      const observer = new MutationObserver(function(mutationsList, observer) {
         remove_notion_page_content();
         TOC();
-        addComment();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
@@ -371,6 +384,15 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       observer.observe(document.querySelector('#notion-app'), {
         childList: true,
         subtree: true,
+      });
+      waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
+      const breadcrumb = new MutationObserver(function(mutationsList, observer) {
+        addComment();
+      });
+      breadcrumb.observe(document.querySelector('.shadow-cursor-breadcrumb'), {
+        childList: true,
+        subtree: true,
+      });
       });
       remove_notion_page_content();
     </script>"#;
@@ -453,9 +475,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                 element!("body", |el| {
                     el.append(rewriter_http, ContentType::Html);
                     el.append(h, ContentType::Html);
-                    if blog_env.allow_comment {
-                        el.append(comment, ContentType::Html);
-                    }
+                    el.append(comment, ContentType::Html);
                     Ok(())
                 }),
             ],
