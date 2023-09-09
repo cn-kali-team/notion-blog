@@ -174,7 +174,7 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    let mut blog_env = BlogEnv::new(env);
+    let blog_env = BlogEnv::new(env);
     let mut full_url = req.url()?;
     full_url.set_host(Some(&blog_env.notion_domain))?;
     let path = req.path();
@@ -342,16 +342,27 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         onLight();
       }
       function addComment() {
-          waitForElementToExist('.notion-page-content').then((content)=>{
+          let my_giscus = document.getElementById('giscus');
           let toc = document.querySelector('.notion-table_of_contents-block');
-          let my_giscus = document.getElementById('MyGiscus');
-          if (my_giscus==null&&toc!==null){
-              const giscus = document.querySelector('.giscus');
-              const newNode = document.importNode(giscus, true);
-              newNode.id = "MyGiscus"
-              content.appendChild(newNode);
-          }
-          });
+          if (my_giscus!==null||toc==null)return;
+          let comment = document.createElement('script');
+          comment.id = "giscus";
+          comment.setAttribute("src","https://giscus.app/client.js");
+          comment.setAttribute("data-repo","cn-kali-team/notion-blog");
+          comment.setAttribute("data-repo-id","R_kgDOI1wUgQ");
+          comment.setAttribute("data-category","Announcements");
+          comment.setAttribute("data-category-id","DIC_kwDOI1wUgc4CZK9O");
+          comment.setAttribute("data-mapping","title");
+          comment.setAttribute("data-strict","0");
+          comment.setAttribute("data-reactions-enabled","1");
+          comment.setAttribute("data-emit-metadata","0");
+          comment.setAttribute("data-input-position","top");
+          comment.setAttribute("data-theme","preferred_color_scheme");
+          comment.setAttribute("data-lang","zh-CN");
+          comment.setAttribute("data-loading","lazy");
+          comment.setAttribute("crossorigin","anonymous");
+          const content = document.querySelector('.notion-page-content');
+          content.append(comment);
       }
       // Notion 浮动 TOC
       function TOC() {
@@ -372,6 +383,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       const observer = new MutationObserver(function(mutationsList, observer) {
         remove_notion_page_content();
         TOC();
+        addComment();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
@@ -385,18 +397,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         childList: true,
         subtree: true,
       });
-      waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
-      const breadcrumb = new MutationObserver(function(mutationsList, observer) {
-        addComment();
-      });
-      breadcrumb.observe(document.querySelector('.shadow-cursor-breadcrumb'), {
-        childList: true,
-        subtree: true,
-      });
-      });
-      waitForElementToExist('.notion-page-content').then((el)=>{
-        addComment();
-      });
       remove_notion_page_content();
     </script>"#;
     let head = r#"
@@ -409,25 +409,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       div.notion-topbar > div > div:nth-child(1n).toggle-mode { display: block !important; }
       div.notion-topbar-mobile > div:nth-child(1n).toggle-mode { display: block !important; }
       </style>
-    "#;
-    let comment = r#"
-    <script
-        src="https://giscus.app/client.js"
-        data-repo="cn-kali-team/notion-blog"
-        data-repo-id="R_kgDOI1wUgQ"
-        data-category="Announcements"
-        data-category-id="DIC_kwDOI1wUgc4CZK9O"
-        data-mapping="pathname"
-        data-strict="0"
-        data-reactions-enabled="1"
-        data-emit-metadata="0"
-        data-input-position="top"
-        data-theme="preferred_color_scheme"
-        data-lang="zh-CN"
-        data-loading="lazy"
-        crossorigin="anonymous"
-        async>
-    </script>
     "#;
     let mut rewriter = HtmlRewriter::new(
         Settings {
@@ -478,7 +459,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                 element!("body", |el| {
                     el.append(rewriter_http, ContentType::Html);
                     el.append(h, ContentType::Html);
-                    el.append(comment, ContentType::Html);
                     Ok(())
                 }),
             ],
