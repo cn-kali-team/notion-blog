@@ -343,26 +343,27 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       }
       function addComment() {
           let my_giscus = document.getElementById('giscus');
-          let toc = document.querySelector('.notion-table_of_contents-block');
-          if (my_giscus!==null||toc==null)return;
+          waitForElementToExist('.notion-table_of_contents-block').then((el)=>{
+          if (my_giscus!==null)return;
           let comment = document.createElement('script');
-          comment.id = "giscus";
-          comment.setAttribute("src","https://giscus.app/client.js");
-          comment.setAttribute("data-repo","cn-kali-team/notion-blog");
-          comment.setAttribute("data-repo-id","R_kgDOI1wUgQ");
-          comment.setAttribute("data-category","Announcements");
-          comment.setAttribute("data-category-id","DIC_kwDOI1wUgc4CZK9O");
-          comment.setAttribute("data-mapping","title");
-          comment.setAttribute("data-strict","0");
-          comment.setAttribute("data-reactions-enabled","1");
-          comment.setAttribute("data-emit-metadata","0");
-          comment.setAttribute("data-input-position","top");
-          comment.setAttribute("data-theme","preferred_color_scheme");
-          comment.setAttribute("data-lang","zh-CN");
-          comment.setAttribute("data-loading","lazy");
-          comment.setAttribute("crossorigin","anonymous");
-          const content = document.querySelector('.notion-page-content');
-          content.append(comment);
+              comment.id = "giscus";
+              comment.setAttribute("src","https://giscus.app/client.js");
+              comment.setAttribute("data-repo","cn-kali-team/notion-blog");
+              comment.setAttribute("data-repo-id","R_kgDOI1wUgQ");
+              comment.setAttribute("data-category","Announcements");
+              comment.setAttribute("data-category-id","DIC_kwDOI1wUgc4CZK9O");
+              comment.setAttribute("data-mapping","title");
+              comment.setAttribute("data-strict","0");
+              comment.setAttribute("data-reactions-enabled","1");
+              comment.setAttribute("data-emit-metadata","0");
+              comment.setAttribute("data-input-position","top");
+              comment.setAttribute("data-theme","preferred_color_scheme");
+              comment.setAttribute("data-lang","zh-CN");
+              comment.setAttribute("data-loading","lazy");
+              comment.setAttribute("crossorigin","anonymous");
+              const content = document.querySelector('.notion-page-content');
+              content.append(comment);
+          });
       }
       // Notion 浮动 TOC
       function TOC() {
@@ -383,7 +384,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       const observer = new MutationObserver(function(mutationsList, observer) {
         remove_notion_page_content();
         TOC();
-        addComment();
         if (redirected) return;
         const nav = document.querySelector('.notion-topbar');
         const mobileNav = document.querySelector('.notion-topbar-mobile');
@@ -396,6 +396,19 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       observer.observe(document.querySelector('#notion-app'), {
         childList: true,
         subtree: true,
+      });
+      waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
+          const breadcrumb = new MutationObserver(function(mutationsList, observer) {
+            console.log(mutationsList)
+            addComment();
+          });
+          breadcrumb.observe(document.querySelector('.shadow-cursor-breadcrumb'), {
+            childList: true,
+            subtree: true,
+          });
+      });
+      waitForElementToExist('.notion-page-content').then((el)=>{
+        addComment();
       });
       remove_notion_page_content();
     </script>"#;
