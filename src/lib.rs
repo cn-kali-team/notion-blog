@@ -74,23 +74,23 @@ async fn cors_options() -> Result<Response> {
     Ok(response.with_headers(header))
 }
 
-async fn rewriter_js(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
-    let request = Request::new_with_init(
-        full_url.as_str(),
-        RequestInit::new().with_method(req.method()),
-    )?;
-    return if let Ok(mut o) = Fetch::Request(request).send().await {
-        let body = o.bytes().await.unwrap_or_default();
-        let body = String::from_utf8_lossy(&body).to_string();
-        let new_body = body.replace(&blog_env.my_domain, &blog_env.notion_domain);
-        let response = Response::from_bytes(new_body.as_bytes().to_vec())?;
-        let mut response_headers = Headers::new();
-        response_headers.set("Content-Type", "application/x-javascript")?;
-        Ok(response.with_headers(response_headers))
-    } else {
-        Response::redirect(full_url)
-    };
-}
+// async fn rewriter_js(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
+//     let request = Request::new_with_init(
+//         full_url.as_str(),
+//         RequestInit::new().with_method(req.method()),
+//     )?;
+//     return if let Ok(mut o) = Fetch::Request(request).send().await {
+//         let body = o.bytes().await.unwrap_or_default();
+//         let body = String::from_utf8_lossy(&body).to_string();
+//         let new_body = body.replace(&blog_env.my_domain, &blog_env.notion_domain);
+//         let response = Response::from_bytes(new_body.as_bytes().to_vec())?;
+//         let mut response_headers = Headers::new();
+//         response_headers.set("Content-Type", "application/x-javascript")?;
+//         Ok(response.with_headers(response_headers))
+//     } else {
+//         Response::redirect(full_url)
+//     };
+// }
 
 async fn proxy_js(req: Request, full_url: Url) -> Result<Response> {
     let request = Request::new_with_init(
@@ -212,9 +212,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     if matches!(req.method(), Method::Options) {
         return cors_options().await;
     }
-    if path.starts_with("/app") && path.ends_with(".js") {
-        rewriter_js(req, full_url, blog_env).await
-    } else if path.ends_with(".js") {
+    if path.ends_with(".js") {
         proxy_js(req, full_url).await
     } else if path.starts_with("/api") {
         rewriter_api(req, full_url, blog_env).await
@@ -234,6 +232,9 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           "https://o324374.ingest.sentry.io/": "",
           "/api/v3/trackSegmentEvent": "{}",
           "/api/v3/ping": "{}",
+          "/f/refresh":"",
+          "/api/v3/getAssetsJsonV2":"{}",
+          "https://statsigapi.net/v1/sdk_exception":"",
           // "/api/v3/getPublicPageData":"{\"publicAccessRole\":\"none\"}",
           "/api/v3/getUserAnalyticsSettings":
             '{"isIntercomEnabled":true,"isZendeskEnabled":true,"isAmplitudeEnabled":true,"isSegmentEnabled":true,"intercomAppId":"gpfdrxfd","noIntercomUserId":false,"isSprigEnabled":true,"isLoaded":true}',
@@ -249,6 +250,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             return defaultResponse;
           }
         }
+        // console.log(resource, config);
         const response = await originalFetch(resource, config);
         return response;
       }
@@ -266,18 +268,6 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       window.CONFIG.domainBaseUrl = location.origin;
       let redirected = false;
       const el = document.createElement('div');
-      const waitFor = (...selectors) => new Promise(resolve => {
-        const delay = 500;
-        const f = () => {
-            const elements = selectors.map(selector => document.querySelector(selector));
-            if (elements.every(element => element != null)) {
-                resolve(elements);
-            } else {
-                setTimeout(f, delay);
-            }
-        }
-        f();
-      });
       function waitForElementToExist(selector) {
         return new Promise(resolve => {
           if (document.querySelector(selector)) {
@@ -367,18 +357,15 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
       }
       // Notion 浮动 TOC
       function TOC() {
-        waitFor('.notion-table_of_contents-block').then(([el]) => {
-          const toc = document.querySelector('.notion-table_of_contents-block');
-          if (toc) {
-              const toc_p = toc.parentElement;
-              if (!toc_p.classList.contains('notion-column-block')) {
-                  return;
-              }
-              toc_p.style.position = 'sticky';
-              toc_p.style.top = '0';
-              toc_p.style.overflowY = 'scroll';
-              toc_p.style.maxHeight = '100vh';
+        waitForElementToExist('.notion-table_of_contents-block').then((toc) => {
+          const toc_p = toc.parentElement;
+          if (!toc_p.classList.contains('notion-column-block')) {
+              return;
           }
+          toc_p.style.position = 'sticky';
+          toc_p.style.top = '0';
+          toc_p.style.overflowY = 'scroll';
+          toc_p.style.maxHeight = '100vh';
       });
       }
       const observer = new MutationObserver(function(mutationsList, observer) {
