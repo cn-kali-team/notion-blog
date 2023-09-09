@@ -394,6 +394,9 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         subtree: true,
       });
       });
+      waitForElementToExist('.notion-page-content').then((el)=>{
+        addComment();
+      });
       remove_notion_page_content();
     </script>"#;
     let head = r#"
