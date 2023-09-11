@@ -306,7 +306,9 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           notion_page_controls.remove()
         }
         let notranslate = document.querySelector("div.pseudoSelection div.notion-record-icon.notranslate");
-        if (notranslate !== null){
+        let imgNode = document.querySelector(".vertical > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > img:nth-child(1)");
+
+        if (notranslate !== null && imgNode !== null){
             notranslate.style.marginTop="-36px";
         }
       }
