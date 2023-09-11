@@ -185,7 +185,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             );
         }
         "/BingSiteAuth.xml" => {
-            return Response::ok("<?xml version="1.0"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
+            return Response::ok("<?xml version=\"1.0\"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
         }
         // "/images/favicon.ico" | "/images/logo-ios.png" => {
         //     return Response::redirect(blog_env.icon.parse()?);
