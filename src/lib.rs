@@ -291,19 +291,23 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           scroll_bar[0].style.paddingBottom = "0vh";
         }
         let iterable = [
-          "html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div div.notion-cursor-listener div main.notion-frame div.notion-scroller.vertical div.pseudoSelection div",
-          "html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div div.notion-cursor-listener div main.notion-frame div.notion-scroller.vertical div.pseudoSelection div div div",
-          "html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div div.notion-cursor-listener div main.notion-frame div.notion-scroller.vertical div.pseudoSelection div div div div img",
-          "html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div div.notion-cursor-listener div main.notion-frame div.notion-scroller.vertical div.pseudoSelection div div div div img"];
+          "div.pseudoSelection div",
+          "div.pseudoSelection div div div",
+          "div.pseudoSelection div div div div img",
+        ];
         for (const entry of iterable) {
           let pseudo_selection = document.querySelector(entry);
           if (pseudo_selection !== null){
             pseudo_selection.style.height = "8vh";
           }
         }
-        let notion_page_controls = document.querySelector("html.notion-html body.notion-body div#notion-app div.notion-app-inner.notion-light-theme div.notion-cursor-listener div div.notion-frame div.notion-scroller.vertical div div div div div.pseudoSelection div.notion-page-controls");
+        let notion_page_controls = document.querySelector("div.pseudoSelection div.notion-page-controls");
         if (notion_page_controls !== null){
           notion_page_controls.remove()
+        }
+        let notranslate = document.querySelector("div.pseudoSelection div.notion-record-icon.notranslate");
+        if (notranslate !== null){
+            notranslate.style.marginTop="-36px";
         }
       }
       remove_notion_page_content();
