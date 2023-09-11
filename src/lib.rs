@@ -1,3 +1,5 @@
+mod page;
+
 use lol_html::html_content::ContentType;
 use lol_html::{element, HtmlRewriter, Settings};
 use serde::{Deserialize, Serialize};
@@ -35,6 +37,7 @@ struct BlogEnv {
     title: String,
     description: String,
     icon: String,
+    query_body: String,
 }
 
 impl BlogEnv {
@@ -47,6 +50,7 @@ impl BlogEnv {
         let title = env.var("PAGE_TITLE").unwrap().to_string();
         let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
         let icon = env.var("ICON_URL").unwrap().to_string();
+        let query_body = env.var("QUERY_BODY").unwrap().to_string();
         BlogEnv {
             my_domain,
             notion_domain,
@@ -56,6 +60,7 @@ impl BlogEnv {
             title,
             description,
             icon,
+            query_body,
         }
     }
 }
@@ -91,6 +96,25 @@ async fn cors_options() -> Result<Response> {
 //         Response::redirect(full_url)
 //     };
 // }
+async fn get_pages(blog_env: BlogEnv) -> Result<page::QueryCollection> {
+    let api_url = format!("https://{}/api/v3/queryCollection?src=reset", blog_env.notion_domain);
+    let mut header = Headers::new();
+    header.set("Content-Type", "application/json")?;
+    let request = Request::new_with_init(
+        api_url.as_str(),
+        RequestInit::new()
+            .with_method(Method::Post)
+            .with_headers(header)
+            .with_body(Some(JsValue::from_str(&blog_env.query_body))),
+    )?;
+    let mut res = Fetch::Request(request).send().await?;
+    let body = res.text().await?;
+    console_log!("{}",body);
+    match serde_json::from_str(body.as_str()) {
+        Ok(page) => Ok(page),
+        Err(err) => Err(Error::JsError(err.to_string()))
+    }
+}
 
 async fn proxy_js(req: Request, full_url: Url) -> Result<Response> {
     let request = Request::new_with_init(
@@ -170,58 +194,6 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
         .with_headers(response_header)
         .with_status(response.status_code());
     Ok(new_response)
-}
-
-#[event(fetch)]
-async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    let blog_env = BlogEnv::new(env);
-    let mut full_url = req.url()?;
-    full_url.set_host(Some(&blog_env.notion_domain))?;
-    let path = req.path();
-    match path.as_str() {
-        "/" => {
-            return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.index).parse()?,
-            );
-        }
-        "/BingSiteAuth.xml" => {
-            return Response::ok("<?xml version=\"1.0\"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
-        }
-        // "/images/favicon.ico" | "/images/logo-ios.png" => {
-        //     return Response::redirect(blog_env.icon.parse()?);
-        // }
-        "/links" => {
-            return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.links).parse()?,
-            );
-        }
-        "/donate" | "/sponsor" => {
-            return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.sponsor).parse()?,
-            );
-        }
-        "/api/v3/teV1" => {
-            return Response::ok("success");
-        }
-        "/robots.txt" => {
-            return Response::ok(format!(
-                "Sitemap: https://{}/sitemap.xml",
-                blog_env.my_domain
-            ));
-        }
-        "/sitemap.xml" => {}
-        _ => {}
-    }
-    if matches!(req.method(), Method::Options) {
-        return cors_options().await;
-    }
-    if path.ends_with(".js") {
-        proxy_js(req, full_url).await
-    } else if path.starts_with("/api") {
-        rewriter_api(req, full_url, blog_env).await
-    } else {
-        rewriter_html(req, full_url, blog_env).await
-    }
 }
 
 fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
@@ -479,6 +451,63 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     rewriter.end().unwrap();
     output
 }
+
+#[event(fetch)]
+async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+    let blog_env = BlogEnv::new(env);
+    let mut full_url = req.url()?;
+    full_url.set_host(Some(&blog_env.notion_domain))?;
+    let path = req.path();
+    match path.as_str() {
+        "/" => {
+            return Response::redirect(
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.index).parse()?,
+            );
+        }
+        "/BingSiteAuth.xml" => {
+            return Response::ok("<?xml version=\"1.0\"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
+        }
+        "/sitemap.xml" => {
+            let page = get_pages(blog_env).await;
+            console_log!("{:?}",page);
+            return Response::ok("");
+        }
+        // "/images/favicon.ico" | "/images/logo-ios.png" => {
+        //     return Response::redirect(blog_env.icon.parse()?);
+        // }
+        "/links" => {
+            return Response::redirect(
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.links).parse()?,
+            );
+        }
+        "/donate" | "/sponsor" => {
+            return Response::redirect(
+                format!("https://{}/{}", &blog_env.my_domain, &blog_env.sponsor).parse()?,
+            );
+        }
+        "/api/v3/teV1" => {
+            return Response::ok("success");
+        }
+        "/robots.txt" => {
+            return Response::ok(format!(
+                "Sitemap: https://{}/sitemap.xml",
+                blog_env.my_domain
+            ));
+        }
+        _ => {}
+    }
+    if matches!(req.method(), Method::Options) {
+        return cors_options().await;
+    }
+    if path.ends_with(".js") {
+        proxy_js(req, full_url).await
+    } else if path.starts_with("/api") {
+        rewriter_api(req, full_url, blog_env).await
+    } else {
+        rewriter_html(req, full_url, blog_env).await
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
