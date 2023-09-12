@@ -96,8 +96,8 @@ pub struct Page {
 impl Page {
     fn to_loc(&self) -> String {
         format!("<url>\n<loc>https://MY_DOMAIN/{}</loc>\n\t<lastmod>{}</lastmod>\n\t<changefreq>daily</changefreq>\n\t<priority>0.7</priority>\n</url>\n",
-                self.id.replace("-", ""),
-                self.created_time.format("%Y-%m-%d").to_string(),
+                self.id.replace('-', ""),
+                self.created_time.format("%Y-%m-%d"),
         )
     }
 }
@@ -291,7 +291,7 @@ mod tests {
 	}
 }"#;
         let p: QueryCollection = serde_json::from_str(j).unwrap();
-        for (key, block) in p.record_map.block {
+        for (_key, block) in p.record_map.block {
             println!("{}", block.value.get_page().unwrap_or_default());
         }
     }
