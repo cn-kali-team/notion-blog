@@ -96,10 +96,21 @@ async fn cors_options() -> Result<Response> {
 //         Response::redirect(full_url)
 //     };
 // }
-async fn get_pages(blog_env: BlogEnv) -> Result<page::QueryCollection> {
-    let api_url = format!("https://{}/api/v3/queryCollection?src=reset", blog_env.notion_domain);
+async fn get_pages(blog_env: &BlogEnv) -> Result<page::QueryCollection> {
+    let api_url = format!(
+        "https://{}/api/v3/queryCollection?src=reset",
+        blog_env.notion_domain
+    );
     let mut header = Headers::new();
     header.set("Content-Type", "application/json")?;
+    header.set(
+        "Accept-Language",
+        "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+    )?;
+    header.set(
+        "User-Agent",
+        " Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+    )?;
     let request = Request::new_with_init(
         api_url.as_str(),
         RequestInit::new()
@@ -109,10 +120,9 @@ async fn get_pages(blog_env: BlogEnv) -> Result<page::QueryCollection> {
     )?;
     let mut res = Fetch::Request(request).send().await?;
     let body = res.text().await?;
-    console_log!("{}",body);
     match serde_json::from_str(body.as_str()) {
         Ok(page) => Ok(page),
-        Err(err) => Err(Error::JsError(err.to_string()))
+        Err(err) => Err(Error::JsError(err.to_string())),
     }
 }
 
@@ -468,9 +478,10 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             return Response::ok("<?xml version=\"1.0\"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
         }
         "/sitemap.xml" => {
-            let page = get_pages(blog_env).await;
-            console_log!("{:?}",page);
-            return Response::ok("");
+            let page = get_pages(&blog_env).await?;
+            let header = Headers::from_iter(vec![("Content-Type", "text/xml")]);
+            let sitemap = page.get_sitemap().replace("MY_DOMAIN", &blog_env.my_domain);
+            return Ok(Response::ok(sitemap)?.with_headers(header));
         }
         // "/images/favicon.ico" | "/images/logo-ios.png" => {
         //     return Response::redirect(blog_env.icon.parse()?);
@@ -507,7 +518,6 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         rewriter_html(req, full_url, blog_env).await
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -1,11 +1,22 @@
-use std::collections::HashMap;
+use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryCollection {
     record_map: RecordMap,
+}
+
+impl QueryCollection {
+    pub fn get_sitemap(&self) -> String {
+        let mut sitemap = String::from("<urlset>\n");
+        for (_key, block) in self.record_map.block.iter() {
+            sitemap.push_str(&block.value.get_page().unwrap_or_default());
+        }
+        sitemap.push_str("</urlset>");
+        sitemap
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,42 +28,133 @@ pub struct RecordMap {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
-    #[serde(rename = "value")]
-    value: ValueRole,
+    value: BlockEnum,
+}
+
+impl BlockEnum {
+    fn get_page(&self) -> Option<String> {
+        match self {
+            BlockEnum::Page(p) => Some(p.to_loc()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ValueRole {
-    value: Value,
-    role: String,
-
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum BlockEnum {
+    Page(Page),
+    ColumnList(ColumnList),
+    Column(Column),
+    CollectionView(CollectionView),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Value {
+pub struct CollectionView {
     id: String,
     version: i32,
-    r#type: String,
+    view_ids: Vec<String>,
+    #[serde(with = "date_format")]
+    created_time: DateTime<FixedOffset>,
+    #[serde(with = "date_format")]
+    last_edited_time: DateTime<FixedOffset>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Column {
+    id: String,
+    version: i32,
+    content: Vec<String>,
+    #[serde(with = "date_format")]
+    created_time: DateTime<FixedOffset>,
+    #[serde(with = "date_format")]
+    last_edited_time: DateTime<FixedOffset>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ColumnList {
+    id: String,
+    version: i32,
+    content: Vec<String>,
+    #[serde(with = "date_format")]
+    created_time: DateTime<FixedOffset>,
+    #[serde(with = "date_format")]
+    last_edited_time: DateTime<FixedOffset>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Page {
+    id: String,
+    version: i32,
     properties: Properties,
-    // #[serde(rename="created_time")]
-    // created_time: DateTime<Utc>,
-    // #[serde(rename="last_edited_time")]
-    // last_edited_time: DateTime<Utc>,
+    #[serde(with = "date_format")]
+    created_time: DateTime<FixedOffset>,
+    #[serde(with = "date_format")]
+    last_edited_time: DateTime<FixedOffset>,
+}
+
+impl Page {
+    fn to_loc(&self) -> String {
+        format!("<url>\n<loc>https://MY_DOMAIN/{}</loc>\n\t<lastmod>{}</lastmod>\n\t<changefreq>daily</changefreq>\n\t<priority>0.7</priority>\n</url>\n",
+                self.id.replace("-", ""),
+                self.created_time.format("%Y-%m-%d").to_string(),
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Properties {
-    title: Vec<Title>,
-
+    title: Title,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Title {
     String(String),
     Array(Vec<Title>),
+}
+
+impl Title {
+    fn get_title(&self) -> String {
+        match self {
+            Title::String(t) => t.to_string(),
+            Title::Array(ts) => {
+                return ts
+                    .iter()
+                    .map(|t| t.get_title())
+                    .collect::<Vec<String>>()
+                    .join("");
+            }
+        }
+    }
+}
+
+mod date_format {
+    use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    const FORMAT: &str = "%Y-%m-%d";
+
+    pub fn serialize<S>(date: &DateTime<FixedOffset>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = date.format(FORMAT).to_string();
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = i64::deserialize(deserializer)?;
+        let tz_offset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
+        match NaiveDateTime::from_timestamp_millis(s) {
+            Some(t) => Ok(DateTime::from_utc(t, tz_offset)),
+            None => Ok(Utc::now().with_timezone(&tz_offset)),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -189,6 +291,8 @@ mod tests {
 	}
 }"#;
         let p: QueryCollection = serde_json::from_str(j).unwrap();
-        println!("{:#?}", p);
+        for (key, block) in p.record_map.block {
+            println!("{}", block.value.get_page().unwrap_or_default());
+        }
     }
 }
