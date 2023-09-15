@@ -249,6 +249,12 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     let h = r#"
     <div>Powered by <a href="https://github.com/cn-kali-team/notion-blog">Kali-Team</a></div>
       <script>
+      let page_location = new URL(window.location.toString());
+      let giscus_session = page_location.searchParams.get("giscus");
+      if (giscus_session!==null){
+        giscus_session = '"'+giscus_session+'"'
+        localStorage.setItem("giscus-session",giscus_session);
+      }
       localStorage.__console = true;
       window.CONFIG.domainBaseUrl = location.origin;
       let redirected = false;
