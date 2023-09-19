@@ -3,6 +3,7 @@ mod page;
 use lol_html::html_content::ContentType;
 use lol_html::{element, HtmlRewriter, Settings};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use worker::wasm_bindgen::JsValue;
 use worker::*;
 
@@ -29,11 +30,9 @@ struct MobileData {
 }
 
 struct BlogEnv {
+    page_map: HashMap<String, String>,
     my_domain: String,
     notion_domain: String,
-    index: String,
-    links: String,
-    sponsor: String,
     title: String,
     description: String,
     icon: String,
@@ -44,19 +43,19 @@ impl BlogEnv {
     pub fn new(env: Env) -> Self {
         let my_domain = env.var("MY_DOMAIN").unwrap().to_string();
         let notion_domain = env.var("NOTION_DOMAIN").unwrap().to_string();
-        let index = env.var("INDEX_PAGE_ID").unwrap().to_string();
-        let links = env.var("LINK_PAGE_ID").unwrap().to_string();
-        let sponsor = env.var("SPONSOR_PAGE_ID").unwrap().to_string();
         let title = env.var("PAGE_TITLE").unwrap().to_string();
         let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
         let icon = env.var("ICON_URL").unwrap().to_string();
         let query_body = env.var("QUERY_BODY").unwrap().to_string();
+        let page_id_map = env
+            .var("PAGE_MAP")
+            .unwrap_or(worker::Var::from(JsValue::from_str("{}")))
+            .to_string();
+        let page_map: HashMap<String, String> = serde_json::from_str(&page_id_map).unwrap();
         BlogEnv {
+            page_map,
             my_domain,
             notion_domain,
-            index,
-            links,
-            sponsor,
             title,
             description,
             icon,
@@ -474,12 +473,10 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let mut full_url = req.url()?;
     full_url.set_host(Some(&blog_env.notion_domain))?;
     let path = req.path();
+    if let Some(page_id) = blog_env.page_map.get(&path) {
+        return Response::redirect(format!("https://{}/{}", &blog_env.my_domain, page_id).parse()?);
+    }
     match path.as_str() {
-        "/" => {
-            return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.index).parse()?,
-            );
-        }
         "/BingSiteAuth.xml" => {
             return Response::ok("<?xml version=\"1.0\"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
         }
@@ -488,19 +485,6 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             let header = Headers::from_iter(vec![("Content-Type", "text/xml")]);
             let sitemap = page.get_sitemap().replace("MY_DOMAIN", &blog_env.my_domain);
             return Ok(Response::ok(sitemap)?.with_headers(header));
-        }
-        // "/images/favicon.ico" | "/images/logo-ios.png" => {
-        //     return Response::redirect(blog_env.icon.parse()?);
-        // }
-        "/links" => {
-            return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.links).parse()?,
-            );
-        }
-        "/donate" | "/sponsor" => {
-            return Response::redirect(
-                format!("https://{}/{}", &blog_env.my_domain, &blog_env.sponsor).parse()?,
-            );
         }
         "/api/v3/teV1" => {
             return Response::ok("success");

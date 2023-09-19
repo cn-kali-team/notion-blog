@@ -17,9 +17,7 @@ command = "cargo install -q worker-build && worker-build --release"
 [vars]
 MY_DOMAIN = "blog.kali-team.cn" # change me
 NOTION_DOMAIN = "kali-team.notion.site" # change me
-INDEX_PAGE_ID = "edb6a939baab4424a25fd295b3c51312" # your original notion page's id
-LINK_PAGE_ID = "9c74faba0b14441a93c2f94a40da3f79" # some page
-DONATE_PAGE_ID = "eb55bc48f7fb42bfaef8473d2b7b63aa" # some page 
+PAGE_MAP = '{"/":"edb6a939baab4424a25fd295b3c51312","/links":"9c74faba0b14441a93c2f94a40da3f79","/donate":"eb55bc48f7fb42bfaef8473d2b7b63aa"}'
 PAGE_TITLE = "Kali-Team"
 PAGE_DESCRIPTION = "三米前有蕉皮"
 
