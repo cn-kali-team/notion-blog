@@ -31,12 +31,21 @@ struct MobileData {
 
 struct BlogEnv {
     page_map: HashMap<String, String>,
+    comment_map: HashMap<String, String>,
     my_domain: String,
     notion_domain: String,
     title: String,
     description: String,
     icon: String,
     query_body: String,
+}
+
+fn var_to_map(env: &Env, name: &str) -> HashMap<String, String> {
+    let page_id_map = env
+        .var(name)
+        .unwrap_or(worker::Var::from(JsValue::from_str("{}")))
+        .to_string();
+    serde_json::from_str::<HashMap<String, String>>(&page_id_map).unwrap_or_default()
 }
 
 impl BlogEnv {
@@ -47,13 +56,11 @@ impl BlogEnv {
         let description = env.var("PAGE_DESCRIPTION").unwrap().to_string();
         let icon = env.var("ICON_URL").unwrap().to_string();
         let query_body = env.var("QUERY_BODY").unwrap().to_string();
-        let page_id_map = env
-            .var("PAGE_MAP")
-            .unwrap_or(worker::Var::from(JsValue::from_str("{}")))
-            .to_string();
-        let page_map: HashMap<String, String> = serde_json::from_str(&page_id_map).unwrap();
+        let page_map = var_to_map(&env, "PAGE_MAP");
+        let comment_map = var_to_map(&env, "COMMENT_MAP");
         BlogEnv {
             page_map,
+            comment_map,
             my_domain,
             notion_domain,
             title,
@@ -205,6 +212,100 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
     Ok(new_response)
 }
 
+fn get_comment(comment_map: &HashMap<String, String>) -> String {
+    let mut script = r#"
+    <script>
+      let page_location = new URL(window.location.toString());
+      let giscus_session = page_location.searchParams.get("giscus");
+      if (giscus_session!==null){
+        giscus_session = '"'+giscus_session+'"'
+        localStorage.setItem("giscus-session",giscus_session);
+      }
+      function addComment() {
+          let my_giscus = document.getElementById('giscus');
+          waitForElementToExist('.notion-table_of_contents-block').then((el)=>{
+          if (my_giscus!==null)return;
+          let comment = document.createElement('script');
+              comment.id = "giscus";
+              comment.setAttribute("src","https://giscus.app/client.js");
+              comment.setAttribute("data-repo","DATA_REPO");
+              comment.setAttribute("data-repo-id","DATA_REPO_ID");
+              comment.setAttribute("data-category","Announcements");
+              comment.setAttribute("data-category-id","DATA_CATEGORY_ID");
+              comment.setAttribute("data-mapping","DATA_MAPPING");
+              comment.setAttribute("data-strict","0");
+              comment.setAttribute("data-reactions-enabled","1");
+              comment.setAttribute("data-emit-metadata","0");
+              comment.setAttribute("data-input-position","DATA_INPUT_POSITION");
+              comment.setAttribute("data-theme","DATA_THEME");
+              comment.setAttribute("data-lang","DATA_LANG");
+              comment.setAttribute("data-loading","lazy");
+              comment.setAttribute("crossorigin","anonymous");
+              const content = document.querySelector('.notion-page-content');
+              content.append(comment);
+          });
+      }
+      waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
+          const breadcrumb = new MutationObserver(function(mutationsList, observer) {
+            console.log(mutationsList)
+            addComment();
+          });
+          breadcrumb.observe(document.querySelector('.shadow-cursor-breadcrumb'), {
+            childList: true,
+            subtree: true,
+          });
+      });
+      waitForElementToExist('.notion-page-content').then((el)=>{
+        addComment();
+      });
+    </script>"#
+        .to_string();
+    script = script
+        .replace(
+            "DATA_REPO_ID",
+            comment_map
+                .get("data-repo-id")
+                .unwrap_or(&String::from("R_kgDOI1wUgQ")),
+        )
+        .replace(
+            "DATA_REPO",
+            comment_map
+                .get("data-repo")
+                .unwrap_or(&String::from("cn-kali-team/notion-blog")),
+        )
+        .replace(
+            "DATA_CATEGORY_ID",
+            comment_map
+                .get("data-category-id")
+                .unwrap_or(&String::from("DIC_kwDOI1wUgc4CZK9O")),
+        )
+        .replace(
+            "DATA_MAPPING",
+            comment_map
+                .get("data-mapping")
+                .unwrap_or(&String::from("title")),
+        )
+        .replace(
+            "DATA_INPUT_POSITION",
+            comment_map
+                .get("data-input-position")
+                .unwrap_or(&String::from("top")),
+        )
+        .replace(
+            "DATA_THEME",
+            comment_map
+                .get("data-theme")
+                .unwrap_or(&String::from("preferred_color_scheme")),
+        )
+        .replace(
+            "DATA_LANG",
+            comment_map
+                .get("data-lang")
+                .unwrap_or(&String::from("zh-CN")),
+        );
+    script
+}
+
 fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     let mut output = vec![];
     let rewriter_http = r#"
@@ -245,19 +346,11 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           return response;
       };
     </script>"#;
-    let h = r#"
+    let base = r#"
     <div>Powered by <a href="https://github.com/cn-kali-team/notion-blog">Kali-Team</a></div>
       <script>
-      let page_location = new URL(window.location.toString());
-      let giscus_session = page_location.searchParams.get("giscus");
-      if (giscus_session!==null){
-        giscus_session = '"'+giscus_session+'"'
-        localStorage.setItem("giscus-session",giscus_session);
-      }
       localStorage.__console = true;
       window.CONFIG.domainBaseUrl = location.origin;
-      let redirected = false;
-      const el = document.createElement('div');
       function waitForElementToExist(selector) {
         return new Promise(resolve => {
           if (document.querySelector(selector)) {
@@ -275,10 +368,13 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           });
         });
       };
+    </script>"#;
+    let resize = r#"
+    <script>
       function remove_notion_page_content(){
-        let scroll_bar = document.getElementsByClassName("notion-page-content");
-        if (scroll_bar.length > 0){
-          scroll_bar[0].style.paddingBottom = "0vh";
+        let scroll_bar = document.querySelector(".notion-page-content");
+        if (scroll_bar){
+          scroll_bar.style.paddingBottom = "0vh";
         }
         let iterable = [
           "div.pseudoSelection div",
@@ -302,7 +398,17 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             notranslate.style.marginTop="-36px";
         }
       }
-      remove_notion_page_content();
+      const breadcrumb = new MutationObserver(function(mutationsList, observer) {
+        remove_notion_page_content();
+      });
+      breadcrumb.observe(document.querySelector('#notion-app'), {
+        childList: true,
+        subtree: true,
+      });
+    </script>"#;
+    let theme = r#"
+    <script>
+      const el = document.createElement('div');
       function onDark() {
         el.innerHTML = '<div title="Change to Light Mode" style="margin-top: 8px; padding-left: 8px; padding-right: 8px; margin-left: 8px; margin-right: 8px; min-width: 0px;"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg></div></div>';
         document.body.classList.add('dark');
@@ -327,32 +433,18 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
         nav.appendChild(el);
         onLight();
       }
-      function addComment() {
-          let my_giscus = document.getElementById('giscus');
-          waitForElementToExist('.notion-table_of_contents-block').then((el)=>{
-          if (my_giscus!==null)return;
-          let comment = document.createElement('script');
-              comment.id = "giscus";
-              comment.setAttribute("src","https://giscus.app/client.js");
-              comment.setAttribute("data-repo","cn-kali-team/notion-blog");
-              comment.setAttribute("data-repo-id","R_kgDOI1wUgQ");
-              comment.setAttribute("data-category","Announcements");
-              comment.setAttribute("data-category-id","DIC_kwDOI1wUgc4CZK9O");
-              comment.setAttribute("data-mapping","title");
-              comment.setAttribute("data-strict","0");
-              comment.setAttribute("data-reactions-enabled","1");
-              comment.setAttribute("data-emit-metadata","0");
-              comment.setAttribute("data-input-position","top");
-              comment.setAttribute("data-theme","preferred_color_scheme");
-              comment.setAttribute("data-lang","zh-CN");
-              comment.setAttribute("data-loading","lazy");
-              comment.setAttribute("crossorigin","anonymous");
-              const content = document.querySelector('.notion-page-content');
-              content.append(comment);
-          });
-      }
+      waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
+        const nav = document.querySelector('.notion-topbar');
+        const mobileNav = document.querySelector('.notion-topbar-mobile');
+        if ((nav && nav.firstChild && nav.firstChild.firstChild) || (mobileNav && mobileNav.firstChild)) {
+          addDarkModeButton(nav ? 'web' : 'mobile');
+        }
+      });
+    </script>"#;
+    let toc = r#"
+    <script>
       // Notion 浮动 TOC
-      function TOC() {
+      function addTOC() {
         waitForElementToExist('.notion-table_of_contents-block').then((toc) => {
           const toc_p = toc.parentElement;
           if (!toc_p.classList.contains('notion-column-block')) {
@@ -362,38 +454,11 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
           toc_p.style.top = '0';
           toc_p.style.overflowY = 'scroll';
           toc_p.style.maxHeight = '100vh';
-      });
+        });
       }
-      const observer = new MutationObserver(function(mutationsList, observer) {
-        remove_notion_page_content();
-        TOC();
-        if (redirected) return;
-        const nav = document.querySelector('.notion-topbar');
-        const mobileNav = document.querySelector('.notion-topbar-mobile');
-        if (nav && nav.firstChild && nav.firstChild.firstChild
-          || mobileNav && mobileNav.firstChild) {
-          redirected = true;
-          addDarkModeButton(nav ? 'web' : 'mobile');
-        }
+      waitForElementToExist('.notion-table_of_contents-block').then((el)=>{
+        addTOC();
       });
-      observer.observe(document.querySelector('#notion-app'), {
-        childList: true,
-        subtree: true,
-      });
-      waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
-          const breadcrumb = new MutationObserver(function(mutationsList, observer) {
-            console.log(mutationsList)
-            addComment();
-          });
-          breadcrumb.observe(document.querySelector('.shadow-cursor-breadcrumb'), {
-            childList: true,
-            subtree: true,
-          });
-      });
-      waitForElementToExist('.notion-page-content').then((el)=>{
-        addComment();
-      });
-      remove_notion_page_content();
     </script>"#;
     let head = r#"
       <style>
@@ -454,7 +519,13 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                 }),
                 element!("body", |el| {
                     el.append(rewriter_http, ContentType::Html);
-                    el.append(h, ContentType::Html);
+                    el.append(base, ContentType::Html);
+                    el.append(resize, ContentType::Html);
+                    el.append(theme, ContentType::Html);
+                    el.append(toc, ContentType::Html);
+                    if !blog_env.comment_map.is_empty() {
+                        el.append(&get_comment(&blog_env.comment_map), ContentType::Html);
+                    }
                     Ok(())
                 }),
             ],

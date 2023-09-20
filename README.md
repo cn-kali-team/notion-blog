@@ -2,7 +2,6 @@
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cn-kali-team/notion-blog)
 
-
 - wrangler.toml
 
 ```toml
@@ -18,11 +17,58 @@ command = "cargo install -q worker-build && worker-build --release"
 MY_DOMAIN = "blog.kali-team.cn" # change me
 NOTION_DOMAIN = "kali-team.notion.site" # change me
 PAGE_MAP = '{"/":"edb6a939baab4424a25fd295b3c51312","/links":"9c74faba0b14441a93c2f94a40da3f79","/donate":"eb55bc48f7fb42bfaef8473d2b7b63aa"}'
+COMMENT_MAP = '{"data-repo":"cn-kali-team/notion-blog","data-repo-id":"R_kgDOI1wUgQ","data-category-id":"DIC_kwDOI1wUgc4CZK9O","data-mapping":"title","data-input-position":"top","data-theme":"preferred_color_scheme","data-lang":"zh-CN"}'
 PAGE_TITLE = "Kali-Team"
 PAGE_DESCRIPTION = "三米前有蕉皮"
+ICON_URL = "https://avatars.githubusercontent.com/u/30642514?v=4"
+QUERY_BODY = '{"collectionView":{"id":"a5b688dd-2876-4f80-a47d-d84e713ac56e","spaceId":"d4aa424b-d5f8-4dc3-a0fb-e5270f17203e"},"source":{"type":"collection","id":"52de4e5e-ba6e-46a2-9dc5-5581637cf339","spaceId":"d4aa424b-d5f8-4dc3-a0fb-e5270f17203e"},"loader":{"type":"reducer","reducers":{"collection_group_results":{"type":"results","limit":10},"table:uncategorized:title:count":{"type":"aggregation","aggregation":{"property":"title","aggregator":"count"}},"table:uncategorized:[[=B:unique":{"type":"aggregation","aggregation":{"property":"[[=B","aggregator":"unique"}},"table:uncategorized:enzw:date_range":{"type":"aggregation","aggregation":{"property":"enzw","aggregator":"date_range"}}},"sort":[{"property":"enzw","direction":"descending"}],"searchQuery":"","userTimeZone":"Asia/Shanghai"}}'
 
 [placement]
 mode = "smart"
+```
+
+- How to modify a configuration file.
+- `PAGE_MAP`: routing and page id,like: `/` => `https://kali-team.notion.site/edb6a939baab4424a25fd295b3c51312`
+- `COMMENT_MAP`:comment system, open [giscus](https://giscus.app/),After completing the guided tutorial,You will
+  receive:
+
+```html
+
+<script src="https://giscus.app/client.js"
+        data-repo="cn-kali-team/notion-blog"
+        data-repo-id="R_kgDOI1wUgQ"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOI1wUgc4CZK9O"
+        data-mapping="title"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="0"
+        data-input-position="bottom"
+        data-theme="preferred_color_scheme"
+        data-lang="zh-CN"
+        crossorigin="anonymous"
+        async>
+</script>
+```
+
+- Convert JavaScript attributes to JSON
+
+```json
+{
+  "data-repo": "cn-kali-team/notion-blog",
+  "data-repo-id": "R_kgDOI1wUgQ",
+  "data-category-id": "DIC_kwDOI1wUgc4CZK9O",
+  "data-mapping": "title",
+  "data-input-position": "top",
+  "data-theme": "preferred_color_scheme",
+  "data-lang": "zh-CN"
+}
+```
+
+- One line string:
+
+```
+'{"data-repo":"cn-kali-team/notion-blog","data-repo-id":"R_kgDOI1wUgQ","data-category-id":"DIC_kwDOI1wUgc4CZK9O","data-mapping":"title","data-input-position":"top","data-theme":"preferred_color_scheme","data-lang":"zh-CN"}'
 ```
 
 ### GitHub Action
