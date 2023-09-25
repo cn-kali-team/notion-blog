@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: "Install Rust toolchain"
         run: rustup target add wasm32-unknown-unknown
+      - name: Cache
+        uses: Swatinem/rust-cache@v1
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
