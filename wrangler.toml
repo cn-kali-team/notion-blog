@@ -1,19 +1,28 @@
-name = "blog"
+name = "vousmevoyez"
 main = "build/worker/shim.mjs"
 compatibility_date = "2023-03-22"
-routes = [{ pattern = "blog.kali-team.cn/*", zone_id = "28eeca2e15ad32083050e97611262653" }]
+routes = [{ pattern = "bigdevil.cc/*", zone_id = "07cea7954d7be87f8e36349358713f32" }]
 usage_model = "bundled"
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
 [vars]
-MY_DOMAIN = "blog.kali-team.cn"
-NOTION_DOMAIN = "kali-team.notion.site"
-PAGE_MAP = '{"/":"edb6a939baab4424a25fd295b3c51312","/links":"9c74faba0b14441a93c2f94a40da3f79","/donate":"eb55bc48f7fb42bfaef8473d2b7b63aa"}'
-COMMENT_MAP = '{"data-repo":"cn-kali-team/notion-blog","data-repo-id":"R_kgDOI1wUgQ","data-category-id":"DIC_kwDOI1wUgc4CZK9O","data-mapping":"title","data-input-position":"top","data-theme":"preferred_color_scheme","data-lang":"zh-CN"}'
-PAGE_TITLE = "Kali-Team"
-PAGE_DESCRIPTION = "三米前有蕉皮"
-ICON_URL = "https://avatars.githubusercontent.com/u/30642514?v=4"
+MY_DOMAIN = "bigdevil.cc"
+NOTION_DOMAIN = "vousmevoyez-k.notion.site"
+PAGE_MAP = '{
+   "/":"7234d9726321445f830c41965a965bcb",
+    "/system": "bbec216e228948e592e3708b4a2ced69",
+    "/software": "b02a50f3f1a64e5b88d8a49b82ee4267",
+    "/tutorials": "a2d588cff8c5437e8c78eb471cca87ec",
+    "/tablets": "d916bdb647684bfa887666dbb0ab6bef",
+    "/update": "9d33fc6293474b4aae78433ccc11595a",
+    "/recommendation": "24cde369f6f446a9b25639515c76231c",
+    "/product": "69f086e6dc6746aa8ea7800816bf9938",
+    "/shop": "7c0a183e96d14bb295fb39012c1f13e2",
+    "/link": "0b43bbdff924fc8addfe7be553e0e46",}'
+PAGE_TITLE = "vousmevoyez"
+PAGE_DESCRIPTION = "vousmevoyez"
+ICON_URL = "https://imgse.com/i/pPqpeJS"
 QUERY_BODY = '{"collectionView":{"id":"a5b688dd-2876-4f80-a47d-d84e713ac56e","spaceId":"d4aa424b-d5f8-4dc3-a0fb-e5270f17203e"},"source":{"type":"collection","id":"52de4e5e-ba6e-46a2-9dc5-5581637cf339","spaceId":"d4aa424b-d5f8-4dc3-a0fb-e5270f17203e"},"loader":{"type":"reducer","reducers":{"collection_group_results":{"type":"results","limit":10},"table:uncategorized:title:count":{"type":"aggregation","aggregation":{"property":"title","aggregator":"count"}},"table:uncategorized:[[=B:unique":{"type":"aggregation","aggregation":{"property":"[[=B","aggregator":"unique"}},"table:uncategorized:enzw:date_range":{"type":"aggregation","aggregation":{"property":"enzw","aggregator":"date_range"}}},"sort":[{"property":"enzw","direction":"descending"}],"searchQuery":"","userTimeZone":"Asia/Shanghai"}}'
 
 [placement]
