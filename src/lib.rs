@@ -563,7 +563,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         }
         "/robots.txt" => {
             return Response::ok(format!(
-                "Sitemap: https://{}/sitemap.xml",
+                "User-agent: *\nAllow: /\nSitemap: https://{}/sitemap.xml",
                 blog_env.my_domain
             ));
         }
