@@ -567,6 +567,9 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 blog_env.my_domain
             ));
         }
+        "/images/favicon.ico" => {
+            return Response::redirect(blog_env.icon.parse()?);
+        }
         _ => {}
     }
     if matches!(req.method(), Method::Options) {
