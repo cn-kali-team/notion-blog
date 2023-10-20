@@ -247,8 +247,8 @@ fn get_comment(comment_map: &HashMap<String, String>) -> String {
           });
       }
       waitForElementToExist('.shadow-cursor-breadcrumb').then((el)=>{
-          const breadcrumb = new MutationObserver(function(mutationsList, observer) {
-            console.log(mutationsList)
+          const breadcrumb = new MutationObserver(() => {
+            console.log(el)
             addComment();
           });
           breadcrumb.observe(document.querySelector('.shadow-cursor-breadcrumb'), {
@@ -399,7 +399,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             notranslate.style.marginTop="-36px";
         }
       }
-      const breadcrumb = new MutationObserver(function(mutationsList, observer) {
+      const breadcrumb = new MutationObserver(() => {
         remove_notion_page_content();
       });
       breadcrumb.observe(document.querySelector('#notion-app'), {
