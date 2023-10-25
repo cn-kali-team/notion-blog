@@ -399,10 +399,10 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             notranslate.style.marginTop="-36px";
         }
       }
-      const breadcrumb = new MutationObserver(function(mutationsList, observer) {
+      const page_observe = new MutationObserver(function(mutationsList, observer) {
         remove_notion_page_content();
       });
-      breadcrumb.observe(document.querySelector('#notion-app'), {
+      page_observe.observe(document.querySelector('#notion-app'), {
         childList: true,
         subtree: true,
       });
