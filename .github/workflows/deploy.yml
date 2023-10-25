@@ -17,7 +17,7 @@ jobs:
       - name: Cache
         uses: Swatinem/rust-cache@v1
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v3.3.2
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
 #        run: cargo install wrangler && wrangler publish
