@@ -388,6 +388,10 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
             pseudo_selection.style.height = "8vh";
           }
         }
+        let layout = document.querySelector(".layout");
+        if (layout != null){
+          layout.style.paddingBottom="2vh";
+        }
         let notion_page_controls = document.querySelector("div.pseudoSelection div.notion-page-controls");
         if (notion_page_controls !== null){
           notion_page_controls.remove()
