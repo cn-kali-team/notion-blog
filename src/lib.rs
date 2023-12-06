@@ -523,7 +523,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                     Ok(())
                 }),
                 element!("body", |el| {
-                    el.append(rewriter_http, ContentType::Html);
+                    // el.append(rewriter_http, ContentType::Html);
                     el.append(base, ContentType::Html);
                     el.append(resize, ContentType::Html);
                     el.append(theme, ContentType::Html);
