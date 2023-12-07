@@ -9,7 +9,7 @@ command = "cargo install -q worker-build && worker-build --release"
 [vars]
 MY_DOMAIN = "blog.kali-team.cn"
 NOTION_DOMAIN = "kali-team.notion.site"
-PAGE_MAP = '{"/":"edb6a939baab4424a25fd295b3c51312","/links":"9c74faba0b14441a93c2f94a40da3f79","/donate":"eb55bc48f7fb42bfaef8473d2b7b63aa"}'
+PAGE_MAP = '{"/":"edb6a939baab4424a25fd295b3c51312","/links":"9c74faba0b14441a93c2f94a40da3f79","/donate":"eb55bc48f7fb42bfaef8473d2b7b63aa","/about":"7a0e2b5d0137452cb7299f9000970caa"}'
 COMMENT_MAP = '{"data-repo":"cn-kali-team/notion-blog","data-repo-id":"R_kgDOI1wUgQ","data-category-id":"DIC_kwDOI1wUgc4CZK9O","data-mapping":"title","data-input-position":"top","data-theme":"preferred_color_scheme","data-lang":"zh-CN"}'
 PAGE_TITLE = "Kali-Team"
 PAGE_DESCRIPTION = "三米前有蕉皮"
