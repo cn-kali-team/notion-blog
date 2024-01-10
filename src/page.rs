@@ -10,7 +10,7 @@ pub struct QueryCollection {
 
 impl QueryCollection {
     pub fn get_sitemap(&self) -> String {
-        let mut sitemap = String::from("<urlset>\n");
+        let mut sitemap = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
         for (_key, block) in self.record_map.block.iter() {
             sitemap.push_str(&block.value.get_page().unwrap_or_default());
         }
@@ -95,7 +95,7 @@ pub struct Page {
 
 impl Page {
     fn to_loc(&self) -> String {
-        format!("<url>\n<loc>https://MY_DOMAIN/{}</loc>\n\t<lastmod>{}</lastmod>\n\t<changefreq>daily</changefreq>\n\t<priority>0.7</priority>\n</url>\n",
+        format!("<url>\n<loc>https://MY_DOMAIN/{}</loc>\n\t<lastmod>{}</lastmod>\n\t<changefreq>daily</changefreq>\n\t<priority>0.9</priority>\n</url>\n",
                 self.id.replace('-', ""),
                 self.created_time.format("%Y-%m-%d"),
         )

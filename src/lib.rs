@@ -309,7 +309,7 @@ fn get_comment(comment_map: &HashMap<String, String>) -> String {
 
 fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
     let mut output = vec![];
-    let rewriter_http = r#"
+    let _rewriter_http = r#"
     <script>
         const HTTP_BLACK_LIST = {
           "https://exp.notion.so/": "",
