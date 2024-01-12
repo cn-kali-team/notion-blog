@@ -4,6 +4,32 @@ use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct QueryBody {
+    page: PageId,
+    limit: u32,
+    chunk_number: u32,
+    vertical_columns: bool,
+}
+
+impl QueryBody {
+    pub fn new(id: String) -> QueryBody {
+        QueryBody {
+            page: PageId { id },
+            limit: 30,
+            chunk_number: 0,
+            vertical_columns: false,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PageId {
+    id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct QueryCollection {
     record_map: RecordMap,
 }
@@ -16,6 +42,12 @@ impl QueryCollection {
         }
         sitemap.push_str("</urlset>");
         sitemap
+    }
+    pub fn get_title(&self, id: &uuid::Uuid) -> Option<String> {
+        if let Some(block) = self.record_map.block.get(&id.to_string()) {
+            return block.value.get_title();
+        }
+        None
     }
 }
 
@@ -38,6 +70,12 @@ impl BlockEnum {
             _ => None,
         }
     }
+    fn get_title(&self) -> Option<String> {
+        match self {
+            BlockEnum::Page(p) => Some(p.properties.title.get_title()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -47,6 +85,8 @@ pub enum BlockEnum {
     ColumnList(ColumnList),
     Column(Column),
     CollectionView(CollectionView),
+    #[serde(other)]
+    Divider,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

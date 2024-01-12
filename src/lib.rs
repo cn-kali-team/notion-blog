@@ -1,5 +1,6 @@
 mod page;
 
+use crate::page::QueryBody;
 use lol_html::html_content::ContentType;
 use lol_html::{element, HtmlRewriter, Settings};
 use serde::{Deserialize, Serialize};
@@ -102,11 +103,12 @@ async fn cors_options() -> Result<Response> {
 //         Response::redirect(full_url)
 //     };
 // }
-async fn get_pages(blog_env: &BlogEnv) -> Result<page::QueryCollection> {
-    let api_url = format!(
-        "https://{}/api/v3/queryCollection?src=reset",
-        blog_env.notion_domain
-    );
+async fn get_pages(
+    path: &str,
+    notion_domain: &String,
+    query_body: &str,
+) -> Result<page::QueryCollection> {
+    let api_url = format!("https://{}/api/v3/{}", notion_domain, path);
     let mut header = Headers::new();
     header.set("Content-Type", "application/json")?;
     header.set(
@@ -122,7 +124,7 @@ async fn get_pages(blog_env: &BlogEnv) -> Result<page::QueryCollection> {
         RequestInit::new()
             .with_method(Method::Post)
             .with_headers(header)
-            .with_body(Some(JsValue::from_str(&blog_env.query_body))),
+            .with_body(Some(JsValue::from_str(query_body))),
     )?;
     let mut res = Fetch::Request(request).send().await?;
     let body = res.text().await?;
@@ -182,6 +184,14 @@ async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Res
     }
 }
 
+async fn get_page_title(id: &uuid::Uuid, blog_env: &BlogEnv) -> Option<String> {
+    let body = serde_json::to_string(&QueryBody::new(id.to_string())).unwrap_or_default();
+    if let Ok(page) = get_pages("loadCachedPageChunk", &blog_env.notion_domain, &body).await {
+        return page.get_title(id);
+    }
+    None
+}
+
 async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
     let headers = req.headers().clone();
     let request = Request::new_with_init(
@@ -205,7 +215,17 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
         }
         response_header.set("Content-Security-Policy", &csp)?;
     }
-    let new_response = Response::from_bytes(rewriter(body, blog_env))
+    let page_id = if full_url.path().len() > 32 {
+        let page_id = &full_url.path()[full_url.path().len() - 32..];
+        page_id.to_string()
+    } else {
+        blog_env.page_map.get("/").unwrap_or(&String::new()).clone()
+    };
+    let mut title = None;
+    if let Ok(page_uuid) = uuid::Uuid::parse_str(&page_id) {
+        title = get_page_title(&page_uuid, &blog_env).await;
+    }
+    let new_response = Response::from_bytes(rewriter(body, blog_env, title))
         .unwrap()
         .with_headers(response_header)
         .with_status(response.status_code());
@@ -307,8 +327,10 @@ fn get_comment(comment_map: &HashMap<String, String>) -> String {
     script
 }
 
-fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
+fn rewriter(html: Vec<u8>, blog_env: BlogEnv, title: Option<String>) -> Vec<u8> {
     let mut output = vec![];
+    let title = title.unwrap_or(blog_env.description);
+
     let _rewriter_http = r#"
     <script>
         const HTTP_BLACK_LIST = {
@@ -489,7 +511,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                         | "twitter:title"
                         | "twitter:site"
                         | "twitter:description" => {
-                            el.set_attribute("content", &blog_env.description).unwrap();
+                            el.set_attribute("content", &title).unwrap();
                         }
                         "twitter:url" => {
                             el.set_attribute("content", &format!("https://{}", blog_env.my_domain))
@@ -505,7 +527,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv) -> Vec<u8> {
                     }
                     match el.get_attribute("property").unwrap_or_default().as_str() {
                         "og:site_name" | "og:title" | "og:description" => {
-                            el.set_attribute("content", &blog_env.description).unwrap();
+                            el.set_attribute("content", &title).unwrap();
                         }
                         "og:url" => {
                             el.set_attribute("content", &format!("https://{}", blog_env.my_domain))
@@ -557,7 +579,12 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             return Response::ok("<?xml version=\"1.0\"?><users><user>6743F9D57B1260BC5F59A888815408B4</user></users>");
         }
         "/sitemap.xml" => {
-            let page = get_pages(&blog_env).await?;
+            let page = get_pages(
+                "queryCollection?src=reset",
+                &blog_env.notion_domain,
+                &blog_env.query_body,
+            )
+                .await?;
             let header = Headers::from_iter(vec![("Content-Type", "text/xml")]);
             let sitemap = page.get_sitemap().replace("MY_DOMAIN", &blog_env.my_domain);
             return Ok(Response::ok(sitemap)?.with_headers(header));
