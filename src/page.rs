@@ -92,7 +92,13 @@ impl BlockEnum {
     }
     fn get_icon(&self) -> Option<String> {
         match self {
-            BlockEnum::Page(p) => Some(p.format.page_icon.clone()),
+            BlockEnum::Page(p) => {
+                if let Ok(u) = worker::Url::parse(&p.format.page_icon) {
+                    return Some(u.to_string());
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -203,16 +209,16 @@ mod date_format {
     const FORMAT: &str = "%Y-%m-%d";
 
     pub fn serialize<S>(date: &DateTime<FixedOffset>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where
+            S: Serializer,
     {
         let s = date.format(FORMAT).to_string();
         serializer.serialize_str(&s)
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
-    where
-        D: Deserializer<'de>,
+        where
+            D: Deserializer<'de>,
     {
         let s = i64::deserialize(deserializer)?;
         let tz_offset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
