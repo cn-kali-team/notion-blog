@@ -184,12 +184,20 @@ async fn rewriter_api(mut req: Request, full_url: Url, blog_env: BlogEnv) -> Res
     }
 }
 
-async fn get_page_title(id: &uuid::Uuid, blog_env: &BlogEnv) -> Option<String> {
+async fn get_page_title_icon(
+    id: &uuid::Uuid,
+    blog_env: &BlogEnv,
+) -> (Option<String>, Option<String>) {
     let body = serde_json::to_string(&QueryBody::new(id.to_string())).unwrap_or_default();
-    if let Ok(page) = get_pages("loadCachedPageChunk", &blog_env.notion_domain, &body).await {
-        return page.get_title(id);
+    match get_pages("syncRecordValues", &blog_env.notion_domain, &body).await {
+        Ok(page) => {
+            return (page.get_title(id), page.get_icon(id));
+        }
+        Err(err) => {
+            console_log!("{}", err)
+        }
     }
-    None
+    (None, None)
 }
 
 async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
@@ -222,10 +230,11 @@ async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result
         blog_env.page_map.get("/").unwrap_or(&String::new()).clone()
     };
     let mut title = None;
+    let mut icon_url = None;
     if let Ok(page_uuid) = uuid::Uuid::parse_str(&page_id) {
-        title = get_page_title(&page_uuid, &blog_env).await;
+        (title, icon_url) = get_page_title_icon(&page_uuid, &blog_env).await;
     }
-    let new_response = Response::from_bytes(rewriter(body, blog_env, title))
+    let new_response = Response::from_bytes(rewriter(body, blog_env, title, icon_url))
         .unwrap()
         .with_headers(response_header)
         .with_status(response.status_code());
@@ -327,10 +336,15 @@ fn get_comment(comment_map: &HashMap<String, String>) -> String {
     script
 }
 
-fn rewriter(html: Vec<u8>, blog_env: BlogEnv, title: Option<String>) -> Vec<u8> {
+fn rewriter(
+    html: Vec<u8>,
+    blog_env: BlogEnv,
+    title: Option<String>,
+    icon_url: Option<String>,
+) -> Vec<u8> {
     let mut output = vec![];
     let title = title.unwrap_or(blog_env.description);
-
+    let icon_url = icon_url.unwrap_or(blog_env.icon);
     let _rewriter_http = r#"
     <script>
         const HTTP_BLACK_LIST = {
@@ -518,7 +532,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv, title: Option<String>) -> Vec<u8> 
                                 .unwrap();
                         }
                         "twitter:image" => {
-                            el.set_attribute("content", &blog_env.icon).unwrap();
+                            el.set_attribute("content", &icon_url).unwrap();
                         }
                         "apple-itunes-app" => {
                             el.remove();
@@ -534,7 +548,7 @@ fn rewriter(html: Vec<u8>, blog_env: BlogEnv, title: Option<String>) -> Vec<u8> 
                                 .unwrap();
                         }
                         "og:image" => {
-                            el.set_attribute("content", &blog_env.icon).unwrap();
+                            el.set_attribute("content", &icon_url).unwrap();
                         }
                         _ => {}
                     }
@@ -584,7 +598,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 &blog_env.notion_domain,
                 &blog_env.query_body,
             )
-                .await?;
+            .await?;
             let header = Headers::from_iter(vec![("Content-Type", "text/xml")]);
             let sitemap = page.get_sitemap().replace("MY_DOMAIN", &blog_env.my_domain);
             return Ok(Response::ok(sitemap)?.with_headers(header));
