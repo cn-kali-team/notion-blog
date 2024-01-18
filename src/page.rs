@@ -1,3 +1,4 @@
+use crate::BlogEnv;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -5,237 +6,297 @@ use std::collections::HashMap;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryBody {
-    requests: Vec<Requests>,
+  requests: Vec<Requests>,
 }
 
 impl QueryBody {
-    pub fn new(id: String) -> QueryBody {
-        QueryBody {
-            requests: vec![Requests {
-                pointer: Pointer {
-                    table: "block".to_string(),
-                    id,
-                },
-                version: -1,
-            }],
-        }
+  pub fn new(id: String) -> QueryBody {
+    QueryBody {
+      requests: vec![Requests {
+        pointer: Pointer {
+          table: "block".to_string(),
+          id,
+        },
+        version: -1,
+      }],
     }
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Requests {
-    pointer: Pointer,
-    version: i32,
+  pointer: Pointer,
+  version: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Pointer {
-    table: String,
-    id: String,
+  table: String,
+  id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryCollection {
-    record_map: RecordMap,
+  record_map: RecordMap,
 }
 
 impl QueryCollection {
-    pub fn get_sitemap(&self) -> String {
-        let mut sitemap = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
-        for (_key, block) in self.record_map.block.iter() {
-            sitemap.push_str(&block.value.get_page().unwrap_or_default());
-        }
-        sitemap.push_str("</urlset>");
-        sitemap
+  pub fn get_sitemap(&self) -> String {
+    let mut sitemap = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
+    for (_key, block) in self.record_map.block.iter() {
+      sitemap.push_str(&block.value.get_loc().unwrap_or_default());
     }
-    pub fn get_title(&self, id: &uuid::Uuid) -> Option<String> {
-        if let Some(block) = self.record_map.block.get(&id.to_string()) {
-            return block.value.get_title();
-        }
-        None
+    sitemap.push_str("</urlset>");
+    sitemap
+  }
+  pub fn get_atom(&self, blog_env: &BlogEnv) -> String {
+    let mut atom = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n");
+    atom.push_str(&format!("<title>{}</title>\n", blog_env.title));
+    atom.push_str(&format!("<subtitle>{}</subtitle>\n", blog_env.description));
+    atom.push_str(&format!(
+      "<link href=\"https://{}/index.xml\" rel=\"self\"/>\n",
+      blog_env.my_domain
+    ));
+    atom.push_str(&format!(
+      "<link href=\"https://{}\"/>\n",
+      blog_env.my_domain
+    ));
+    atom.push_str(&format!("<id>https://{}</id>\n", blog_env.my_domain));
+    atom.push_str(&format!(
+      "<author><name>{}</name></author>\n",
+      blog_env.description
+    ));
+    for (_key, block) in self.record_map.block.iter() {
+      atom.push_str(&block.value.get_atom().unwrap_or_default());
     }
-    pub fn get_icon(&self, id: &uuid::Uuid) -> Option<String> {
-        if let Some(block) = self.record_map.block.get(&id.to_string()) {
-            return block.value.get_icon();
-        }
-        None
+    atom.push_str("</feed>");
+    atom
+  }
+  pub fn get_title(&self, id: &uuid::Uuid) -> Option<String> {
+    if let Some(block) = self.record_map.block.get(&id.to_string()) {
+      return block.value.get_title();
     }
+    None
+  }
+  pub fn get_icon(&self, id: &uuid::Uuid) -> Option<String> {
+    if let Some(block) = self.record_map.block.get(&id.to_string()) {
+      return block.value.get_icon();
+    }
+    None
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordMap {
-    block: HashMap<String, Block>,
+  block: HashMap<String, Block>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
-    value: BlockEnum,
+  value: BlockEnum,
 }
 
 impl BlockEnum {
-    fn get_page(&self) -> Option<String> {
-        match self {
-            BlockEnum::Page(p) => Some(p.to_loc()),
-            _ => None,
-        }
+  fn get_loc(&self) -> Option<String> {
+    match self {
+      BlockEnum::Page(p) => Some(p.to_loc()),
+      _ => None,
     }
-    fn get_title(&self) -> Option<String> {
-        match self {
-            BlockEnum::Page(p) => Some(p.properties.title.get_title()),
-            _ => None,
-        }
+  }
+  fn get_atom(&self) -> Option<String> {
+    match self {
+      BlockEnum::Page(p) => Some(p.to_entry()),
+      _ => None,
     }
-    fn get_icon(&self) -> Option<String> {
-        match self {
-            BlockEnum::Page(p) => {
-                if let Ok(u) = worker::Url::parse(&p.format.page_icon) {
-                    return Some(u.to_string());
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+  }
+  fn get_title(&self) -> Option<String> {
+    match self {
+      BlockEnum::Page(p) => Some(p.properties.title.get_title()),
+      _ => None,
     }
+  }
+  fn get_icon(&self) -> Option<String> {
+    match self {
+      BlockEnum::Page(p) => {
+        if let Ok(u) = worker::Url::parse(&p.format.page_icon) {
+          Some(u.to_string())
+        } else {
+          None
+        }
+      }
+      _ => None,
+    }
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BlockEnum {
-    Page(Page),
-    ColumnList(ColumnList),
-    Column(Column),
-    CollectionView(CollectionView),
-    #[serde(other)]
-    Divider,
+  Page(Page),
+  ColumnList(ColumnList),
+  Column(Column),
+  CollectionView(CollectionView),
+  #[serde(other)]
+  Divider,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CollectionView {
-    id: String,
-    version: i32,
-    view_ids: Vec<String>,
-    #[serde(with = "date_format")]
-    created_time: DateTime<FixedOffset>,
-    #[serde(with = "date_format")]
-    last_edited_time: DateTime<FixedOffset>,
+  id: String,
+  version: i32,
+  view_ids: Vec<String>,
+  #[serde(with = "date_format")]
+  created_time: DateTime<FixedOffset>,
+  #[serde(with = "date_format")]
+  last_edited_time: DateTime<FixedOffset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Column {
-    id: String,
-    version: i32,
-    content: Vec<String>,
-    #[serde(with = "date_format")]
-    created_time: DateTime<FixedOffset>,
-    #[serde(with = "date_format")]
-    last_edited_time: DateTime<FixedOffset>,
+  id: String,
+  version: i32,
+  content: Vec<String>,
+  #[serde(with = "date_format")]
+  created_time: DateTime<FixedOffset>,
+  #[serde(with = "date_format")]
+  last_edited_time: DateTime<FixedOffset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ColumnList {
-    id: String,
-    version: i32,
-    content: Vec<String>,
-    #[serde(with = "date_format")]
-    created_time: DateTime<FixedOffset>,
-    #[serde(with = "date_format")]
-    last_edited_time: DateTime<FixedOffset>,
+  id: String,
+  version: i32,
+  content: Vec<String>,
+  #[serde(with = "date_format")]
+  created_time: DateTime<FixedOffset>,
+  #[serde(with = "date_format")]
+  last_edited_time: DateTime<FixedOffset>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
-    id: String,
-    version: i32,
-    properties: Properties,
-    #[serde(with = "date_format")]
-    created_time: DateTime<FixedOffset>,
-    #[serde(with = "date_format")]
-    last_edited_time: DateTime<FixedOffset>,
-    format: Format,
+  id: String,
+  version: i32,
+  properties: Properties,
+  #[serde(with = "date_format")]
+  created_time: DateTime<FixedOffset>,
+  #[serde(with = "date_format")]
+  last_edited_time: DateTime<FixedOffset>,
+  format: Format,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Format {
-    page_icon: String,
+  page_icon: String,
 }
 
 impl Page {
-    fn to_loc(&self) -> String {
-        format!("<url>\n<loc>https://MY_DOMAIN/{}</loc>\n\t<lastmod>{}</lastmod>\n\t<changefreq>daily</changefreq>\n\t<priority>0.9</priority>\n</url>\n",
-                self.id.replace('-', ""),
-                self.created_time.format("%Y-%m-%d"),
-        )
-    }
+  fn to_loc(&self) -> String {
+    format!("<url>\n<loc>https://MY_DOMAIN/{}</loc>\n\t<lastmod>{}</lastmod>\n\t<changefreq>daily</changefreq>\n\t<priority>0.9</priority>\n</url>\n",
+            self.id.replace('-', ""),
+            self.created_time.format("%Y-%m-%d"),
+    )
+  }
+  fn to_entry(&self) -> String {
+    let mut entry = String::from("<entry>\n\t");
+    let page_id = self.id.replace('-', "");
+    entry.push_str(&format!(
+      "<title>{}</title>\n\t",
+      self.properties.title.get_title()
+    ));
+    entry.push_str(&format!(
+      "<link href=\"https://MY_DOMAIN/{}\"/>\n\t",
+      page_id
+    ));
+    entry.push_str(&format!("<id>https://MY_DOMAIN/{}</id>\n\t", page_id));
+    entry.push_str(&format!(
+      "<published>{}</published>\n\t",
+      self.created_time.to_rfc3339()
+    ));
+    entry.push_str(&format!(
+      "<updated>{}</updated>\n\t",
+      self.last_edited_time.to_rfc3339()
+    ));
+    entry.push_str(&format!(
+      "<content type=\"text\">{}</content>\n\t",
+      self.properties.title.get_title()
+    ));
+    entry.push_str(&format!(
+      "<summary type=\"text\">{}</summary>\n",
+      self.properties.title.get_title()
+    ));
+    entry.push_str("</entry>\n");
+    entry
+  }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Properties {
-    title: Title,
+  title: Title,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Title {
-    String(String),
-    Array(Vec<Title>),
+  String(String),
+  Array(Vec<Title>),
 }
 
 impl Title {
-    fn get_title(&self) -> String {
-        match self {
-            Title::String(t) => t.to_string(),
-            Title::Array(ts) => {
-                return ts
-                    .iter()
-                    .map(|t| t.get_title())
-                    .collect::<Vec<String>>()
-                    .join("");
-            }
-        }
+  fn get_title(&self) -> String {
+    match self {
+      Title::String(t) => t.to_string(),
+      Title::Array(ts) => {
+        return ts
+          .iter()
+          .map(|t| t.get_title())
+          .collect::<Vec<String>>()
+          .join("");
+      }
     }
+  }
 }
 
 mod date_format {
-    use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
-    use serde::{self, Deserialize, Deserializer, Serializer};
+  use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
+  use serde::{self, Deserialize, Deserializer, Serializer};
 
-    const FORMAT: &str = "%Y-%m-%d";
+  const FORMAT: &str = "%Y-%m-%d";
 
-    pub fn serialize<S>(date: &DateTime<FixedOffset>, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-    {
-        let s = date.format(FORMAT).to_string();
-        serializer.serialize_str(&s)
+  pub fn serialize<S>(date: &DateTime<FixedOffset>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+      S: Serializer,
+  {
+    let s = date.format(FORMAT).to_string();
+    serializer.serialize_str(&s)
+  }
+
+  pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
+    where
+      D: Deserializer<'de>,
+  {
+    let s = i64::deserialize(deserializer)?;
+    let tz_offset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
+    match NaiveDateTime::from_timestamp_millis(s) {
+      Some(t) => Ok(DateTime::from_utc(t, tz_offset)),
+      None => Ok(Utc::now().with_timezone(&tz_offset)),
     }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<FixedOffset>, D::Error>
-        where
-            D: Deserializer<'de>,
-    {
-        let s = i64::deserialize(deserializer)?;
-        let tz_offset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
-        match NaiveDateTime::from_timestamp_millis(s) {
-            Some(t) => Ok(DateTime::from_utc(t, tz_offset)),
-            None => Ok(Utc::now().with_timezone(&tz_offset)),
-        }
-    }
+  }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::page::QueryCollection;
+  use crate::page::QueryCollection;
 
-    #[test]
-    fn test_notion_json() {
-        let j = r#"
+  #[test]
+  fn test_notion_json() {
+    let j = r#"
         {
 	"recordMap": {
 		"__version__": 3,
@@ -362,9 +423,9 @@ mod tests {
 		}
 	}
 }"#;
-        let p: QueryCollection = serde_json::from_str(j).unwrap();
-        for (_key, block) in p.record_map.block {
-            println!("{}", block.value.get_page().unwrap_or_default());
-        }
+    let p: QueryCollection = serde_json::from_str(j).unwrap();
+    for (_key, block) in p.record_map.block {
+      println!("{}", block.value.get_loc().unwrap_or_default());
     }
+  }
 }
