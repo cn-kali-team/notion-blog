@@ -26,6 +26,23 @@ QUERY_BODY = '{"collectionView":{"id":"a5b688dd-2876-4f80-a47d-d84e713ac56e","sp
 [placement]
 mode = "smart"
 ```
+## wrangler.toml
+
+### name
+
+- This is the worker name you created for yourself
+- My cloudflare worker's name is `blog`,you can open your workers link `https://dash.cloudflare.com/Account_ID/Domain/workers`
+
+### routes
+
+- This subdomain routing trigger bound by your worker
+- open `https://dash.cloudflare.com/Account_ID/workers/services/view/WORKER_NAME/production/triggers`
+- My `routes` pattern is `blog.kali-team.cn/*`
+![routes](doc/routes.png)
+- My `zone_id` is `28eeca2e15ad32083050e97611262653`
+![zone_id](doc/zone_id.png)
+
+### var
 
 - How to modify a configuration file.
 - `PAGE_MAP`: routing and page id,like: `/` => `https://kali-team.notion.site/edb6a939baab4424a25fd295b3c51312`
