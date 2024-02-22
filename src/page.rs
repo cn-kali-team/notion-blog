@@ -126,6 +126,9 @@ impl BlockEnum {
         if let Ok(u) = worker::Url::parse(&p.format.page_cover) {
           Some(u.to_string())
         } else {
+          if p.format.page_cover.starts_with("/images/") {
+            return Some(p.format.page_cover.to_string());
+          }
           None
         }
       }
