@@ -123,7 +123,7 @@ impl BlockEnum {
   fn get_icon(&self) -> Option<String> {
     match self {
       BlockEnum::Page(p) => {
-        if let Ok(u) = worker::Url::parse(&p.format.page_icon) {
+        if let Ok(u) = worker::Url::parse(&p.format.page_cover.unwrap_or_default()) {
           Some(u.to_string())
         } else {
           None
@@ -192,7 +192,7 @@ pub struct Page {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Format {
-  page_icon: String,
+  page_cover: Option<String>,
 }
 
 impl Page {
