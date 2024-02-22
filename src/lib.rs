@@ -346,7 +346,10 @@ fn rewriter(
 ) -> Vec<u8> {
     let mut output = vec![];
     let title = title.unwrap_or(blog_env.description);
-    let icon_url = icon_url.unwrap_or(blog_env.icon);
+    let mut icon_url = icon_url.unwrap_or(blog_env.icon);
+    if icon_url.starts_with("/images/") {
+        icon_url = format!("https://{}{}", blog_env.my_domain, icon_url);
+    }
     let mut rewriter = HtmlRewriter::new(
         Settings {
             element_content_handlers: vec![
