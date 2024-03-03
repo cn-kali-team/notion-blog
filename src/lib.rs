@@ -224,7 +224,6 @@ fn update_history(page_map: &HashMap<String, String>) -> String {
           history.replaceState(history.state, '', "/"+ path_name[path_name.length-1]);
         }
       };
-      update_history();
     </script>"#
         .replace("slug_map_str", &slug_map_str)
         .replace("page_map_str", &page_map_str)
