@@ -94,6 +94,7 @@ pub const RESIZE: &str = r#"
       }
       const page_observe = new MutationObserver(function(mutationsList, observer) {
         remove_notion_page_content();
+        update_history();
       });
       page_observe.observe(document.querySelector('#notion-app'), {
         childList: true,

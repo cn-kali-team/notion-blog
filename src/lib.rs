@@ -202,6 +202,34 @@ async fn get_page_title_icon(
     (None, None)
 }
 
+fn update_history(page_map: &HashMap<String, String>) -> String {
+    let page_map_str = serde_json::to_string(&page_map).unwrap_or("{}".to_string());
+    let mut slug_map = HashMap::new();
+    for (k, v) in page_map {
+        slug_map.insert(v, k);
+    }
+    let slug_map_str = serde_json::to_string(&slug_map).unwrap_or("{}".to_string());
+    r#"
+      <script>
+      const SLUG_TO_PAGE = slug_map_str;
+      const PAGE_TO_SLUG = page_map_str;
+      function update_history() {
+        if (PAGE_TO_SLUG[location.pathname]){
+          return;
+        }
+        if (SLUG_TO_PAGE[location.pathname.slice(-32)]){
+          history.replaceState(history.state, '', SLUG_TO_PAGE[location.pathname.slice(-32)]);
+        } else{
+          let path_name = location.pathname.split("/");
+          history.replaceState(history.state, '', "/"+ path_name[path_name.length-1]);
+        }
+      };
+      update_history();
+    </script>"#
+        .replace("slug_map_str", &slug_map_str)
+        .replace("page_map_str", &page_map_str)
+}
+
 async fn rewriter_html(req: Request, full_url: Url, blog_env: BlogEnv) -> Result<Response> {
     let headers = req.headers().clone();
     let request = Request::new_with_init(
@@ -399,6 +427,7 @@ fn rewriter(
                 element!("body", |el| {
                     // el.append(rewriter_http, ContentType::Html);
                     el.append(BASE, ContentType::Html);
+                    el.append(&update_history(&blog_env.page_map), ContentType::Html);
                     el.append(RESIZE, ContentType::Html);
                     el.append(THEME, ContentType::Html);
                     el.append(TOC, ContentType::Html);
