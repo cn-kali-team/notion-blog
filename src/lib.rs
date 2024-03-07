@@ -399,7 +399,7 @@ fn rewriter(
                         "twitter:image" => {
                             el.set_attribute("content", &icon_url).unwrap();
                         }
-                        "apple-itunes-app" => {
+                        "apple-itunes-app" | "apple-mobile-web-app-capable" => {
                             el.remove();
                         }
                         _ => {}
