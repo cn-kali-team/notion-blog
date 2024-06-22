@@ -136,6 +136,25 @@ pub const THEME: &str = r#"
         }
       });
     </script>"#;
+pub const TOC: &str = r#"
+    <script>
+      // Notion 浮动 TOC
+      function addTOC() {
+        waitForElementToExist('.notion-table_of_contents-block').then((toc) => {
+          const toc_p = toc.parentElement;
+          if (!toc_p.classList.contains('notion-column-block')) {
+              return;
+          }
+          toc_p.style.position = 'sticky';
+          toc_p.style.top = '0';
+          toc_p.style.overflowY = 'scroll';
+          toc_p.style.maxHeight = '100vh';
+        });
+      }
+      waitForElementToExist('.notion-table_of_contents-block').then((el)=>{
+        addTOC();
+      });
+    </script>"#;
 pub const HEAD: &str = r#"
       <style>
       div.notion-topbar > div > div:nth-last-child(-n+4) { display: none !important; }
