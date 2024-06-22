@@ -67,8 +67,11 @@ pub const RESIZE: &str = r#"
           scroll_bar.style.paddingBottom = "0vh";
         }
         let iterable = [
+          "div.layout-full div.pseudoSelection div",
+          "div.layout-full div.pseudoSelection div div",
+          "div.layout-full div.pseudoSelection div div div",
           "div.pseudoSelection div",
-          "div.pseudoSelection div div div",
+          "div.pseudoSelection div div div",        
           "div.pseudoSelection div div div div img",
         ];
         for (const entry of iterable) {
