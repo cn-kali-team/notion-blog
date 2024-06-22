@@ -1,7 +1,7 @@
 mod html;
 mod page;
 
-use crate::html::{BASE, HEAD, RESIZE, THEME, TOC};
+use crate::html::{BASE, HEAD, RESIZE, THEME};
 use crate::page::QueryBody;
 use lol_html::html_content::ContentType;
 use lol_html::{element, HtmlRewriter, Settings};
@@ -281,7 +281,7 @@ fn get_comment(comment_map: &HashMap<String, String>) -> String {
       }
       function addComment() {
           let my_giscus = document.getElementById('giscus');
-          waitForElementToExist('.notion-table_of_contents-block').then((el)=>{
+          waitForElementToExist('.hide-scrollbar').then((el)=>{
           addTOC();
           if (my_giscus!==null)return;
           let comment = document.createElement('script');
@@ -429,7 +429,6 @@ fn rewriter(
                     el.append(&update_history(&blog_env.page_map), ContentType::Html);
                     el.append(RESIZE, ContentType::Html);
                     el.append(THEME, ContentType::Html);
-                    el.append(TOC, ContentType::Html);
                     if !blog_env.comment_map.is_empty() {
                         el.append(&get_comment(&blog_env.comment_map), ContentType::Html);
                     }
