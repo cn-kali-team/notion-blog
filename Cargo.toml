@@ -13,7 +13,7 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
-worker = "0.0.18"
+worker = "0.3.0"
 lol_html = "1.1.1"
 uuid = { version = "1.6.1", features = ["js"] }
 serde_json = "1.0"

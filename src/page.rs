@@ -268,7 +268,7 @@ impl Title {
 }
 
 mod date_format {
-    use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
+    use chrono::{DateTime, FixedOffset, Utc};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     const FORMAT: &str = "%Y-%m-%d";
@@ -287,8 +287,8 @@ mod date_format {
     {
         let s = i64::deserialize(deserializer)?;
         let tz_offset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
-        match NaiveDateTime::from_timestamp_millis(s) {
-            Some(t) => Ok(DateTime::from_utc(t, tz_offset)),
+        match DateTime::from_timestamp_millis(s) {
+            Some(t) => Ok(DateTime::from_naive_utc_and_offset(t.naive_utc(), tz_offset)),
             None => Ok(Utc::now().with_timezone(&tz_offset)),
         }
     }

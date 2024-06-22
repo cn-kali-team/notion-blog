@@ -282,7 +282,6 @@ fn get_comment(comment_map: &HashMap<String, String>) -> String {
       function addComment() {
           let my_giscus = document.getElementById('giscus');
           waitForElementToExist('.hide-scrollbar').then((el)=>{
-          addTOC();
           if (my_giscus!==null)return;
           let comment = document.createElement('script');
               comment.id = "giscus";
