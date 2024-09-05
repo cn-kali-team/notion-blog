@@ -288,7 +288,10 @@ mod date_format {
         let s = i64::deserialize(deserializer)?;
         let tz_offset = FixedOffset::east_opt(8 * 60 * 60).unwrap();
         match DateTime::from_timestamp_millis(s) {
-            Some(t) => Ok(DateTime::from_naive_utc_and_offset(t.naive_utc(), tz_offset)),
+            Some(t) => Ok(DateTime::from_naive_utc_and_offset(
+                t.naive_utc(),
+                tz_offset,
+            )),
             None => Ok(Utc::now().with_timezone(&tz_offset)),
         }
     }

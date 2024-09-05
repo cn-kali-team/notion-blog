@@ -1,4 +1,4 @@
-pub const _REWRITER_HTTP: &str = r#"
+pub const REWRITER_HTTP: &str = r#"
     <script>
         const HTTP_BLACK_LIST = {
           "https://exp.notion.so/": "",
@@ -25,7 +25,7 @@ pub const _REWRITER_HTTP: &str = r#"
             return defaultResponse;
           }
         }
-        // console.log(resource, config);
+        console.log(resource, config);
         const response = await originalFetch(resource, config);
         return response;
       }
