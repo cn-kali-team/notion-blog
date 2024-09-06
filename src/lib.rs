@@ -427,7 +427,7 @@ fn rewriter(
                     // el.append(rewriter_http, ContentType::Html);
                     el.append(BASE, ContentType::Html);
                     el.append(REWRITER_HTTP, ContentType::Html);
-                    el.append(&update_history(&blog_env.page_map), ContentType::Html);
+                    // el.append(&update_history(&blog_env.page_map), ContentType::Html);
                     el.append(RESIZE, ContentType::Html);
                     el.append(THEME, ContentType::Html);
                     el.append(TOC, ContentType::Html);
