@@ -213,6 +213,9 @@ fn update_history(page_map: &HashMap<String, String>) -> String {
       <script>
       const SLUG_TO_PAGE = slug_map_str;
       const PAGE_TO_SLUG = page_map_str;
+      function getPage() {
+        return location.pathname.slice(-32);
+      };
       function update_history() {
         if (PAGE_TO_SLUG[location.pathname]){
           return;
@@ -224,6 +227,25 @@ fn update_history(page_map: &HashMap<String, String>) -> String {
           history.replaceState(history.state, '', "/"+ path_name[path_name.length-1]);
         }
       };
+      const replaceState = window.history.replaceState;
+        window.history.replaceState = function(state) {
+          if (arguments[1] !== 'bypass' && SLUG_TO_PAGE.hasOwnProperty(getSlug())) return;
+          return replaceState.apply(window.history, arguments);
+        };
+        const pushState = window.history.pushState;
+        window.history.pushState = function(state) {
+          const dest = new URL(location.protocol + location.host + arguments[2]);
+          const id = dest.pathname.slice(-32);
+          if (SLUG_TO_PAGE.hasOwnProperty(id)) {
+            arguments[2] = '/' + PAGE_TO_SLUG[id];
+          }
+          return pushState.apply(window.history, arguments);
+        };
+        const open = window.XMLHttpRequest.prototype.open;
+        window.XMLHttpRequest.prototype.open = function() {
+          arguments[1] = arguments[1].replace('${config.domain}', 'www.notion.so');
+          return open.apply(this, [].slice.call(arguments));
+        };
     </script>"#
         .replace("slug_map_str", &slug_map_str)
         .replace("page_map_str", &page_map_str)
@@ -427,7 +449,7 @@ fn rewriter(
                     // el.append(rewriter_http, ContentType::Html);
                     el.append(BASE, ContentType::Html);
                     el.append(REWRITER_HTTP, ContentType::Html);
-                    // el.append(&update_history(&blog_env.page_map), ContentType::Html);
+                    el.append(&update_history(&blog_env.page_map), ContentType::Html);
                     el.append(RESIZE, ContentType::Html);
                     el.append(THEME, ContentType::Html);
                     el.append(TOC, ContentType::Html);
