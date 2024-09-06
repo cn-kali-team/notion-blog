@@ -216,6 +216,9 @@ fn update_history(page_map: &HashMap<String, String>) -> String {
       function getPage() {
         return location.pathname.slice(-32);
       };
+      function getSlug() {
+        return location.pathname.slice(1);
+      };
       function update_history() {
         if (PAGE_TO_SLUG[location.pathname]){
           return;
