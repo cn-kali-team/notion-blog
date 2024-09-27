@@ -43,16 +43,11 @@ jobs:
           target: x86_64-unknown-linux-musl
       - name: Build release binary
         run: cargo install --git https://github.com/getzola/zola.git --features=indexing-zh
-      - name: Build archive
-        shell: bash
-        run: |
-            bin_file="~/.cargo/bin/zola"
-            echo "BIN_FILE=$bin_file" >> $GITHUB_ENV
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.BIN_FILE }}
+          file: /home/runner/.cargo/bin/zola
           asset_name: zola
           tag: default
           overwrite: true
